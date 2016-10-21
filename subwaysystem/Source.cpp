@@ -13,17 +13,16 @@
 
 int main(void)
 {
-	STEREO_PCM pcm0, pcm1;
-	int n, m, k, J, L, N, offset, frame, number_of_frame,countsound;
+	MONO_PCM pcm0, pcm1;
+	int n, m, k, J, L, N, offset, frame, number_of_frame, countsound;
 	double fe, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag;
 
-	stereo_wave_read(&pcm0, "005_160615_0941V0.wav"); /* WAVEファイルからステレオの音データを入力する */
+	mono_wave_read(&pcm0, "005_160615_0941V0.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
 	pcm1.fs = pcm0.fs; /* 標本化周波数 */
 	pcm1.bits = pcm0.bits; /* 量子化精度 */
 	pcm1.length = pcm0.length; /* 音データの長さ */
-	pcm1.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
-	pcm1.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
+	pcm1.s = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 
 	fe = 600.0 / pcm0.fs; /* エッジ周波数 */
 	delta = 500.0 / pcm0.fs; /* 遷移帯域幅 */
@@ -34,7 +33,7 @@ int main(void)
 		J++; /* J+1が奇数になるように調整する */
 	}
 
-	b = (double*) calloc((J + 1), sizeof(double)); /* メモリの確保 */
+	b = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
 	w = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
 
 	Hanning_window(w, (J + 1)); /* ハニング窓 */
@@ -47,7 +46,7 @@ int main(void)
 	countsound = 0; /* 音が閾値を超えた回数*/
 	threshold = 100.0;/* 閾値*/
 
-	number_of_frame = pcm0.length*2 / L; /* フレームの数 */
+	number_of_frame = pcm0.length / L; /* フレームの数 */
 
 	b_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	b_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
@@ -66,10 +65,9 @@ int main(void)
 			x_real[n] = 0.0;
 			x_imag[n] = 0.0;
 		}
-		for (n = 0; n < L/2; n++)
+		for (n = 0; n < L; n++)
 		{
-			x_real[2 * n] = pcm0.sL[(offset/2) + n];
-			x_real[(2 * n) + 1] = pcm0.sR[(offset / 2) + n];
+			x_real[n] = pcm0.s[offset + n];
 		}
 		FFT(x_real, x_imag, N);
 
@@ -92,27 +90,24 @@ int main(void)
 			y_imag[k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
 		}
 
-		countsound += judgeSounnd(y_real,N,threshold);
-		
+		countsound += judgeSounnd(y_real, N, threshold);
+
 		IFFT(y_real, y_imag, N);
 
 		/* フィルタリング結果の連結 */
-		for (n = 0; n < L * 2/2; n++)
+		for (n = 0; n < L * 2; n++)
 		{
-			if ((offset/2) + n < pcm1.length)
-			{	
-				pcm1.sL[(offset/2) + n] += y_real[2 * n];			
-				pcm1.sR[(offset/2) + n] += y_real[(2*n)+1];
+			if (offset + n < pcm1.length)
+			{
+				pcm1.s[offset + n] += y_real[n];
 			}
 		}
 	}
 
-	stereo_wave_write(&pcm1, "ex6_3.wav"); /* WAVEファイルにモノラルの音データを出力する */
+	mono_wave_write(&pcm1, "ex6_4.wav"); /* WAVEファイルにモノラルの音データを出力する */
 
-	free(pcm0.sL); /* メモリの解放 */
-	free(pcm0.sR); /* メモリの解放 */
-	free(pcm1.sL); /* メモリの解放 */
-	free(pcm1.sR); /* メモリの解放 */
+	free(pcm0.s); /* メモリの解放 */
+	free(pcm1.s); /* メモリの解放 */
 	free(b); /* メモリの解放 */
 	free(w); /* メモリの解放 */
 	free(b_real); /* メモリの解放 */
@@ -122,7 +117,7 @@ int main(void)
 	free(y_real); /* メモリの解放 */
 	free(y_imag); /* メモリの解放 */
 
-	printf("countsound =%d\n",countsound);
+	printf("countsound =%d\n", countsound);
 	printf("finish");
 
 	return 0;
