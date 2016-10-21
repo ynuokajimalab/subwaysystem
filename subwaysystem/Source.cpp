@@ -15,9 +15,9 @@ int main(void)
 {
 	STEREO_PCM pcm0, pcm1;
 	int n, m, k, J, L, N, offset, frame, number_of_frame,countsound;
-	double fe, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag;
+	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag;
 
-	stereo_wave_read(&pcm0, "005_160615_0941V0.wav"); /* WAVEファイルからステレオの音データを入力する */
+	stereo_wave_read(&pcm0, "short1.wav"); /* WAVEファイルからステレオの音データを入力する */
 
 	pcm1.fs = pcm0.fs; /* 標本化周波数 */
 	pcm1.bits = pcm0.bits; /* 量子化精度 */
@@ -25,8 +25,9 @@ int main(void)
 	pcm1.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 	pcm1.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 
-	fe = 600.0 / pcm0.fs; /* エッジ周波数 */
-	delta = 500.0 / pcm0.fs; /* 遷移帯域幅 */
+	fe1 = 150.0 / pcm0.fs; /* エッジ周波数1 */
+	fe2 = 450.0 / pcm0.fs; /* エッジ周波数2 */
+	delta = 450.0 / pcm0.fs; /* 遷移帯域幅 */
 
 	J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
 	if (J % 2 == 1)
@@ -39,7 +40,7 @@ int main(void)
 
 	Hanning_window(w, (J + 1)); /* ハニング窓 */
 
-	FIR_LPF(fe, J, b, w); /* FIRフィルタの設計 */
+	FIR_BPF(fe1,fe2, J, b, w); /* FIRフィルタの設計 */
 
 	L = 256; /* フレームの長さ */
 	N = 512; /* DFTのサイズ */
@@ -107,7 +108,7 @@ int main(void)
 		}
 	}
 
-	stereo_wave_write(&pcm1, "ex6_3.wav"); /* WAVEファイルにモノラルの音データを出力する */
+	stereo_wave_write(&pcm1, "out_short1_BPFver.wav"); /* WAVEファイルにモノラルの音データを出力する */
 
 	free(pcm0.sL); /* メモリの解放 */
 	free(pcm0.sR); /* メモリの解放 */
