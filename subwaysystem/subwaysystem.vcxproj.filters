@@ -43,5 +43,14 @@
     <Media Include="005_160615_0941V0.WAV">
       <Filter>リソース ファイル</Filter>
     </Media>
+    <Media Include="short3.WAV">
+      <Filter>リソース ファイル</Filter>
+    </Media>
+    <Media Include="short1.WAV">
+      <Filter>リソース ファイル</Filter>
+    </Media>
+    <Media Include="short2.WAV">
+      <Filter>リソース ファイル</Filter>
+    </Media>
   </ItemGroup>
 </Project>
