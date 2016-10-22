@@ -10,12 +10,15 @@
 #include "fir_filter.h"
 #include "fft.h"
 #include "countSound.h"
+#include "make_datfile.h"
+
 
 int main(void)
 {
 	STEREO_PCM pcm0, pcm1;
-	int n, m, k, J, L, N, offset, frame, number_of_frame,countsound;
-	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag;
+	int n, m, k, J, L, N, offset, frame, number_of_frame,countsound,compressionrate,significantfg,sfig,filehasdata;
+	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag, *y_abs;
+
 
 	stereo_wave_read(&pcm0, "short1.wav"); /* WAVEファイルからステレオの音データを入力する */
 
@@ -46,9 +49,18 @@ int main(void)
 	N = 512; /* DFTのサイズ */
 
 	countsound = 0; /* 音が閾値を超えた回数*/
-	threshold = 100.0;/* 閾値*/
+	threshold = 10.0;/* 閾値*/
+
+	filehasdata = 0; /*ファイルを新しく作るか決定するフラグ*/
+	compressionrate = 500; /*データの圧縮率(-倍)*/
+	significantfg = 7;/*datファイルの有効桁数*/
+	sfig = 1;
+	for (int i = 1; i < significantfg; i++)
+		sfig *= 10;
+
 
 	number_of_frame = pcm0.length*2 / L; /* フレームの数 */
+
 
 	b_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	b_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
@@ -56,6 +68,7 @@ int main(void)
 	x_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	y_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	y_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
+	y_abs = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -94,8 +107,28 @@ int main(void)
 		}
 
 		countsound += judgeSounnd(y_real,N,threshold);
-		
 		IFFT(y_real, y_imag, N);
+
+		double temp_real, temp_imag;
+		for (int k = 0; k < N; k++)
+		{
+			temp_real = y_real[k] * sfig;
+			temp_imag = y_imag[k] * sfig;
+			y_abs[k] = sqrt(pow(temp_real, 2) + pow(temp_imag, 2));
+			y_abs[k] /= (sfig*2);
+		}
+
+		if (filehasdata != 0) {
+			postscript_datfile("allsound.dat", y_abs, N,offset);
+		}
+		else {
+		make_datfile("allsound.dat",y_abs,N);
+		filehasdata = 1;
+		}
+
+		if (frame == number_of_frame/2)
+			make_datfile("onepointsound.dat",y_abs,N);
+
 
 		/* フィルタリング結果の連結 */
 		for (n = 0; n < L * 2/2; n++)
@@ -107,6 +140,8 @@ int main(void)
 			}
 		}
 	}
+
+	sampling_data("allsound.dat","samplingsound.dat",compressionrate);
 
 	stereo_wave_write(&pcm1, "out_short1_BPFver.wav"); /* WAVEファイルにモノラルの音データを出力する */
 
@@ -122,6 +157,7 @@ int main(void)
 	free(x_imag); /* メモリの解放 */
 	free(y_real); /* メモリの解放 */
 	free(y_imag); /* メモリの解放 */
+	free(y_abs); /* メモリの解放 */
 
 	printf("countsound =%d\n",countsound);
 	printf("finish");

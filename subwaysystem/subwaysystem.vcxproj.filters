@@ -38,6 +38,9 @@
     <ClInclude Include="countSound.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="make_datfile.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Media Include="005_160615_0941V0.WAV">
