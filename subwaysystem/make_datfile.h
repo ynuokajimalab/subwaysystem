@@ -29,20 +29,47 @@ void postscript_datfile(char *filename, double data[],int datasize,int index){
 
 
 //inputfile ‚Ìƒf[ƒ^”‚ğcompressionrate‚¾‚¯ˆ³k
-void sampling_data(char *inputfilename,char *outputfilename,int compressionrate){
+double sampling_data(char *inputfilename,char *outputfilename,int compressionrate){
 	int index;
 	double data;
 	FILE *infp,*outfp;
+	double max;
 
 	infp = fopen(inputfilename, "r");
 	outfp = fopen(outputfilename, "w");
 	index = 0;
+	max = 0;
 
 		
 	while((fscanf(infp, "%d %lf", &index, &data)) != EOF){
+		if (max < data) {
+			max = data;
+		}
+
 		if (index%compressionrate == 0) {
 			fprintf(outfp,"%d %f\n",index,data);
 		}
+	}
+
+	fclose(infp);
+	fclose(outfp);
+
+	return max;
+
+}
+
+void normalize_data(char *inputfilename, char *outputfilename, double max) {
+	double data;
+	int index;
+	FILE *infp, *outfp;
+
+	infp = fopen(inputfilename, "r");
+	outfp = fopen(outputfilename, "w");
+
+
+	while ((fscanf(infp, "%d %lf", &index, &data)) != EOF) {
+		data /= max;
+		fprintf(outfp, "%d %lf\n", index, data);
 	}
 
 	fclose(infp);
