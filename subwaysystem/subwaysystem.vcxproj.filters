@@ -52,5 +52,11 @@
     <Media Include="short2.WAV">
       <Filter>リソース ファイル</Filter>
     </Media>
+    <Media Include="zoom2.WAV">
+      <Filter>リソース ファイル</Filter>
+    </Media>
+    <Media Include="zoom1.WAV">
+      <Filter>リソース ファイル</Filter>
+    </Media>
   </ItemGroup>
 </Project>

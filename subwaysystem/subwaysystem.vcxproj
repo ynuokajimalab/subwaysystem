@@ -161,6 +161,8 @@
     <Media Include="short1.WAV" />
     <Media Include="short2.WAV" />
     <Media Include="short3.WAV" />
+    <Media Include="zoom1.WAV" />
+    <Media Include="zoom2.WAV" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
