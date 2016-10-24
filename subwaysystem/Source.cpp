@@ -16,8 +16,8 @@
 int main(void)
 {
 	STEREO_PCM pcm0, pcm1;
-	int n, m, k, J, L, N, offset, frame, number_of_frame,countsound,compressionrate,filehasdata;
-	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag;
+	int n, m, k, J, L, N, offset, frame, number_of_frame,counts,compressionrate,filehasdata,count;
+	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag, max;
 
 
 	stereo_wave_read(&pcm0, "short1.wav"); /* WAVEファイルからステレオの音データを入力する */
@@ -48,7 +48,8 @@ int main(void)
 	L = 256; /* フレームの長さ */
 	N = 512; /* DFTのサイズ */
 
-	countsound = 0; /* 音が閾値を超えた回数*/
+	count = 0;
+	counts = 0; /* 音が閾値を超えた回数*/
 	threshold = 10.0;/* 閾値*/
 
 	filehasdata = 0; /*ファイルを新しく作るか決定するフラグ*/
@@ -101,7 +102,7 @@ int main(void)
 			y_imag[k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
 		}
 
-		countsound += judgeSounnd(y_real,N,threshold);
+		counts += judgeSounnd(y_real,N,threshold);
 		IFFT(y_real, y_imag, N);
 
 		if (filehasdata != 0) {
@@ -129,8 +130,10 @@ int main(void)
 			}
 		}
 	}
-	double max1 = sampling_data("allsound.dat", "samplingsound.dat", compressionrate);
-	normalize_data("samplingsound.dat","nomalizesound.dat",max1);
+
+	max = sampling_data("allsound.dat", "samplingsound.dat", compressionrate);
+	normalize_data("samplingsound.dat", "nomalizesound.dat", max);
+	count = countsound("nomalizesound.dat",0.5);
 
 	stereo_wave_write(&pcm1, "out_short1_BPFver.wav"); /* WAVEファイルにモノラルの音データを出力する */
 
@@ -147,7 +150,7 @@ int main(void)
 	free(y_real); /* メモリの解放 */
 	free(y_imag); /* メモリの解放 */
 
-	printf("countsound =%d\n",countsound);
+	printf("counts =%d\n count = %d\n",counts,count);
 	printf("finish");
 
 	return 0;
