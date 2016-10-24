@@ -25,8 +25,8 @@ int main(void)
 	pcm1.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保、改良 */
 	pcm1.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 、改良*/
 
-	fe = 1000.0 / pcm0.fs; /* エッジ周波数 */
-	delta = 200.0 / pcm0.fs; /* 遷移帯域幅 */
+	fe = 500.0 / pcm0.fs; /* エッジ周波数 */
+	delta = 600.0 / pcm0.fs; /* 遷移帯域幅 */
 
 	J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
 	if (J % 2 == 1)
@@ -56,58 +56,79 @@ int main(void)
 	y_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	y_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 
-	for (frame = 0; frame < number_of_frame; frame++)
-	{
-		offset = L * frame;
+	/*for (m = 0; m < J; m++)
+		{
 
-		/* x(n)のFFT */
-		for (n = 0; n < N; n++)
-		{
-			x_real[n] = 0.0;
-			x_imag[n] = 0.0;
-		}
-		for (n = 0; n < L/2; n++)
-		{
-			x_real[2 * n] = pcm0.sL[offset/2 + n];
-			x_real[2 * n + 1] = pcm0.sR[offset/2 + n];
-		}
-		FFT(x_real, x_imag, N);
-
-		/* b(m)のFFT */
-		for (m = 0; m < N; m++)
-		{
-			b_real[m] = 0.0;
-			b_imag[m] = 0.0;
-		}
-		for (m = 0; m <= J; m++)
-		{
-			b_real[m] = b[m];
-		}
-		FFT(b_real, b_imag, N);
-
-		/* フィルタリング */
-		for (k = 0; k < N; k++)
-		{
-			y_real[k] = x_real[k] * b_real[k] - x_imag[k] * b_imag[k];
-			y_imag[k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
-		}
-
-		countsound += judgeSounnd(y_real,N,threshold);
-		
-		IFFT(y_real, y_imag, N);
-
-		/* フィルタリング結果の連結 */
-		for (n = 0; n < L; n++)
-		{
-			if (offset/2 + n < pcm1.length)
+			for (n = 0; n < N; n++)
 			{
-				pcm1.sL[offset/2 + n] += y_real[2 * n];
-				pcm1.sR[offset/2 + n] += y_real[2 * n + 1];
+				y_real[n] += b_real[m] * x_real[n - m];
+				y_imag[n] += b_imag[m] * x_imag[n - m];
+			}
+
+		}*/
+
+	//for (frame = 0; frame < number_of_frame; frame++)
+	//{
+	//	offset = L * frame;
+
+
+	//	/* x(n)のFFT */
+	//	/*for (n = 0; n < N; n++)
+	//	{
+	//		x_real[n] = 0.0;
+	//		x_imag[n] = 0.0;
+	//	}
+	//	for (n = 0; n < L/2; n++)
+	//	{
+	//		x_real[2 * n] = pcm0.sL[offset/2 + n];
+	//		x_real[2 * n + 1] = pcm0.sR[offset/2 + n];
+	//	}*/
+	//	/*FFT(x_real, x_imag, N);*/
+
+	//	/* b(m)のFFT */
+	//	/*for (m = 0; m < N; m++)
+	//	{
+	//		b_real[m] = 0.0;
+	//		b_imag[m] = 0.0;
+	//	}
+	//	for (m = 0; m <= J; m++)
+	//	{
+	//		b_real[m] = b[m];
+	//	}*/
+	//	/*FFT(b_real, b_imag, N);*/
+
+	//	countsound += judgeSounnd(y_real, N, threshold);
+
+	//	/* フィルタリング */
+		for (n = 0; n < pcm0.length; n++)
+		{
+			for (m = 0; m <= J; m++)
+			{
+				if (n - m >= 0)
+				{
+					pcm1.sL[n] += b[m] * pcm0.sL[n - m];
+					pcm1.sR[n] += b[m] * pcm0.sR[n - m];
+				}
 			}
 		}
-	}
+	//
 
-	stereo_wave_write(&pcm1, "ex6_4ex.wav"); /* WAVEファイルにモノラルの音データを出力する */
+	//	
+	//	
+	//	/*IFFT(y_real, y_imag, N);*/
+
+	//	/* フィルタリング結果の連結 */
+	//	/*for (n = 0; n < L; n++)
+	//	{
+	//		if (offset/2 + n < pcm1.length)
+	//		{
+	//			pcm1.sL[offset/2 + n] += y_real[2 * n];
+	//			pcm1.sR[offset/2 + n] += y_real[2 * n + 1];
+	//		}
+	//	}*/
+	//
+	//}
+	stereo_wave_write(&pcm1, "ex6_4extra.wav"); /* WAVEファイルにモノラルの音データを出力する */
 
 	free(pcm0.sL); /* メモリの解放 */
 	free(pcm0.sR); /* メモリの解放 */
