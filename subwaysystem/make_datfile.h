@@ -42,11 +42,11 @@ double sampling_data(char *inputfilename,char *outputfilename,int compressionrat
 
 		
 	while((fscanf(infp, "%d %lf", &index, &data)) != EOF){
-		if (max < data) {
-			max = data;
-		}
 
 		if (index%compressionrate == 0) {
+			if (max < data) {
+				max = data;
+			}
 			fprintf(outfp,"%d %f\n",index,data);
 		}
 	}

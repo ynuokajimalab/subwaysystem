@@ -11,13 +11,14 @@
 #include "fft.h"
 #include "countSound.h"
 #include "make_datfile.h"
+#include "dfr_filter.h"
 
 
 int main(void)
 {
 	STEREO_PCM pcm0, pcm1;
-	int n, m, k, J, L, N, offset, frame, number_of_frame,counts,compressionrate,filehasdata,count;
-	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag, max;
+	int n, m, k, J, L, N, offset, frame, number_of_frame,count,compressionrate,filehasdata;
+	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag,*y_adge, max,enhancerate;
 
 
 	stereo_wave_read(&pcm0, "short1.wav"); /* WAVEファイルからステレオの音データを入力する */
@@ -28,9 +29,9 @@ int main(void)
 	pcm1.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 	pcm1.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 
-	fe1 = 150.0 / pcm0.fs; /* エッジ周波数1 */
-	fe2 = 450.0 / pcm0.fs; /* エッジ周波数2 */
-	delta = 450.0 / pcm0.fs; /* 遷移帯域幅 */
+	fe1 = 500.0 / (2 * pcm0.fs); /* エッジ周波数1 */
+	fe2 = 2000.0 / (2 * pcm0.fs); /* エッジ周波数2 */
+	delta = 900.0 / (2 * pcm0.fs); /* 遷移帯域幅 */
 
 	J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
 	if (J % 2 == 1)
@@ -43,17 +44,18 @@ int main(void)
 
 	Hanning_window(w, (J + 1)); /* ハニング窓 */
 
+	//FIR_LPF(fe2,J,b,w);
 	FIR_BPF(fe1,fe2, J, b, w); /* FIRフィルタの設計 */
 
 	L = 256; /* フレームの長さ */
 	N = 512; /* DFTのサイズ */
 
-	count = 0;
-	counts = 0; /* 音が閾値を超えた回数*/
+	count = 0; /* 音が閾値を超えた回数*/
 	threshold = 10.0;/* 閾値*/
 
 	filehasdata = 0; /*ファイルを新しく作るか決定するフラグ*/
 	compressionrate = 500; /*データの圧縮率(-倍)*/
+	enhancerate = 0.8;/*エッジの強調率*/
 
 
 	number_of_frame = pcm0.length*2 / L; /* フレームの数 */
@@ -65,6 +67,7 @@ int main(void)
 	x_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	y_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	y_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
+	//y_adge = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -100,24 +103,27 @@ int main(void)
 		{
 			y_real[k] = x_real[k] * b_real[k] - x_imag[k] * b_imag[k];
 			y_imag[k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
+			//y_adge[k] = 0;
 		}
 
-		counts += judgeSounnd(y_real,N,threshold);
 		IFFT(y_real, y_imag, N);
 
-		if (filehasdata != 0) {
-			postscript_datfile("allsound.dat", y_real, N,offset);
-			postscript_datfile("orgsound.dat", x_real, N, offset);
+		/*エッジ強調処理*/
+		//laplacian(y_real,y_adge,N);
+		//edgestress(y_real, y_adge, N,enhancerate);
 
-		}
-		else {
-			make_datfile("allsound.dat",y_real,N);
-			make_datfile("orgsound.dat", x_real, N);
-			filehasdata = 1;
-		}
 
-		if (frame == number_of_frame/2)
-			make_datfile("onepointsound.dat",y_real,N);
+		//if (filehasdata != 0) {
+		//	postscript_datfile("allsound.dat", y_real, N,offset);
+		//	postscript_datfile("orgsound.dat", x_real, N,offset);
+		//}else{
+		//	make_datfile("allsound.dat",y_real,N);
+		//	make_datfile("orgsound.dat", x_real, N);
+		//	filehasdata = 1;
+		//}
+
+		//if (frame == number_of_frame/2)
+		//	make_datfile("onepointsound.dat",y_real,N);
 
 
 		/* フィルタリング結果の連結 */
@@ -131,9 +137,13 @@ int main(void)
 		}
 	}
 
-	max = sampling_data("allsound.dat", "samplingsound.dat", compressionrate);
-	normalize_data("samplingsound.dat", "nomalizesound.dat", max);
-	count = countsound("nomalizesound.dat",0.5);
+
+	//max = sampling_data("allsound.dat", "samplingsound.dat", compressionrate);
+	//normalize_data("samplingsound.dat", "nomalizesound.dat", max);
+	//double xmax = sampling_data("orgsound.dat", "samplingsound.dat", compressionrate);
+	//normalize_data("samplingsound.dat", "nomalizesound.dat", xmax);
+
+	//count = countsound("nomalizesound.dat",0.55);
 
 	stereo_wave_write(&pcm1, "out_short1_BPFver.wav"); /* WAVEファイルにモノラルの音データを出力する */
 
@@ -149,8 +159,11 @@ int main(void)
 	free(x_imag); /* メモリの解放 */
 	free(y_real); /* メモリの解放 */
 	free(y_imag); /* メモリの解放 */
+	
+	//free(y_adge); /* メモリの解放 */
 
-	printf("counts =%d\n count = %d\n",counts,count);
+	//printf("counts =%d\n count = %d\n",counts,count);
+	//printf("max = %lf\n ",max);
 	printf("finish");
 
 	return 0;
