@@ -16,9 +16,9 @@
 
 int main(void)
 {
-	STEREO_PCM pcm0, pcm1;
-	int n, m, k, J, L, N, offset, frame, number_of_frame,count,compressionrate,filehasdata;
-	double fe1,fe2, delta, threshold, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag,*y_adge, max,enhancerate;
+	STEREO_PCM pcm0, pcm1,pcm1_adge;
+	int n, m, k, J, L, N, offset, frame, number_of_frame;
+	double fe1,fe2, delta, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag,*y_adge,enhancerate;
 
 
 	stereo_wave_read(&pcm0, "short1.wav"); /* WAVEファイルからステレオの音データを入力する */
@@ -28,6 +28,12 @@ int main(void)
 	pcm1.length = pcm0.length; /* 音データの長さ */
 	pcm1.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 	pcm1.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
+
+	pcm1_adge.fs = pcm0.fs; /* 標本化周波数 */
+	pcm1_adge.bits = pcm0.bits; /* 量子化精度 */
+	pcm1_adge.length = pcm0.length; /* 音データの長さ */
+	pcm1_adge.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
+	pcm1_adge.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 
 	fe1 = 500.0 / (2 * pcm0.fs); /* エッジ周波数1 */
 	fe2 = 2000.0 / (2 * pcm0.fs); /* エッジ周波数2 */
@@ -50,16 +56,12 @@ int main(void)
 	L = 256; /* フレームの長さ */
 	N = 512; /* DFTのサイズ */
 
-	count = 0; /* 音が閾値を超えた回数*/
-	threshold = 10.0;/* 閾値*/
-
-	filehasdata = 0; /*ファイルを新しく作るか決定するフラグ*/
-	compressionrate = 500; /*データの圧縮率(-倍)*/
-	enhancerate = 0.8;/*エッジの強調率*/
-
+	//filehasdata = 0; /*ファイルを新しく作るか決定するフラグ*/
+	//compressionrate = 500; /*データの圧縮率(-倍)*/
+	
+	//enhancerate = 0.8;/*エッジの強調率*/
 
 	number_of_frame = pcm0.length*2 / L; /* フレームの数 */
-
 
 	b_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	b_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
@@ -67,7 +69,7 @@ int main(void)
 	x_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	y_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	y_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
-	//y_adge = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
+	y_adge = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -103,16 +105,17 @@ int main(void)
 		{
 			y_real[k] = x_real[k] * b_real[k] - x_imag[k] * b_imag[k];
 			y_imag[k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
-			//y_adge[k] = 0;
+
+			y_adge[k] = 0;
 		}
 
 		IFFT(y_real, y_imag, N);
 
 		/*エッジ強調処理*/
-		//laplacian(y_real,y_adge,N);
+		laplacian(y_real,y_adge,N);
 		//edgestress(y_real, y_adge, N,enhancerate);
 
-
+		//データファイル処理
 		//if (filehasdata != 0) {
 		//	postscript_datfile("allsound.dat", y_real, N,offset);
 		//	postscript_datfile("orgsound.dat", x_real, N,offset);
@@ -131,8 +134,11 @@ int main(void)
 		{
 			if ((offset/2) + n < pcm1.length)
 			{	
-				pcm1.sL[(offset/2) + n] += y_real[2 * n];			
-				pcm1.sR[(offset/2) + n] += y_real[(2*n)+1];
+				pcm1.sL[(offset / 2) + n] += y_real[2 * n];
+				pcm1.sR[(offset / 2) + n] += y_real[(2 * n) + 1];
+
+				pcm1_adge.sL[(offset/2) + n] += y_adge[2 * n];			
+				pcm1_adge.sR[(offset/2) + n] += y_adge[(2*n)+1];
 			}
 		}
 	}
@@ -146,11 +152,14 @@ int main(void)
 	//count = countsound("nomalizesound.dat",0.55);
 
 	stereo_wave_write(&pcm1, "out_short1_BPFver.wav"); /* WAVEファイルにモノラルの音データを出力する */
+	stereo_wave_write(&pcm1_adge, "out_short1_adge_BPFver.wav"); /* WAVEファイルにモノラルの音データを出力する */
 
 	free(pcm0.sL); /* メモリの解放 */
 	free(pcm0.sR); /* メモリの解放 */
 	free(pcm1.sL); /* メモリの解放 */
 	free(pcm1.sR); /* メモリの解放 */
+	free(pcm1_adge.sL); /* メモリの解放 */
+	free(pcm1_adge.sR); /* メモリの解放 */
 	free(b); /* メモリの解放 */
 	free(w); /* メモリの解放 */
 	free(b_real); /* メモリの解放 */
@@ -159,8 +168,7 @@ int main(void)
 	free(x_imag); /* メモリの解放 */
 	free(y_real); /* メモリの解放 */
 	free(y_imag); /* メモリの解放 */
-	
-	//free(y_adge); /* メモリの解放 */
+	free(y_adge); /* メモリの解放 */
 
 	//printf("counts =%d\n count = %d\n",counts,count);
 	//printf("max = %lf\n ",max);

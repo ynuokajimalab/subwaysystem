@@ -150,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="countSound.h" />
+    <ClInclude Include="dfr_filter.h" />
     <ClInclude Include="fft.h" />
     <ClInclude Include="fir_filter.h" />
     <ClInclude Include="make_datfile.h" />
