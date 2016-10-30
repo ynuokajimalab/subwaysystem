@@ -149,20 +149,14 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="countSound.h" />
-    <ClInclude Include="dfr_filter.h" />
-    <ClInclude Include="fft.h" />
-    <ClInclude Include="fir_filter.h" />
-    <ClInclude Include="make_datfile.h" />
-    <ClInclude Include="sinc.h" />
-    <ClInclude Include="wave.h" />
-    <ClInclude Include="window_function.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Media Include="005_160615_0941V0.WAV" />
-    <Media Include="short1.WAV" />
-    <Media Include="short2.WAV" />
-    <Media Include="short3.WAV" />
+    <ClInclude Include="hederfiles\countSound.h" />
+    <ClInclude Include="hederfiles\dfr_filter.h" />
+    <ClInclude Include="hederfiles\fft.h" />
+    <ClInclude Include="hederfiles\fir_filter.h" />
+    <ClInclude Include="hederfiles\make_datfile.h" />
+    <ClInclude Include="hederfiles\sinc.h" />
+    <ClInclude Include="hederfiles\wave.h" />
+    <ClInclude Include="hederfiles\window_function.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
