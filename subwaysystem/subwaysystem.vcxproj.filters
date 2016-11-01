@@ -20,28 +20,31 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="hederfiles\countSound.h">
+    <ClInclude Include="headerfiles\countSound.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="hederfiles\dfr_filter.h">
+    <ClInclude Include="headerfiles\dfr_filter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="hederfiles\fft.h">
+    <ClInclude Include="headerfiles\fft.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="hederfiles\fir_filter.h">
+    <ClInclude Include="headerfiles\fir_filter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="hederfiles\make_datfile.h">
+    <ClInclude Include="headerfiles\make_datfile.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="hederfiles\sinc.h">
+    <ClInclude Include="headerfiles\normalizaition.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="hederfiles\wave.h">
+    <ClInclude Include="headerfiles\sinc.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="hederfiles\window_function.h">
+    <ClInclude Include="headerfiles\wave.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="headerfiles\window_function.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
