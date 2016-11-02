@@ -154,7 +154,6 @@
     <ClInclude Include="headerfiles\fft.h" />
     <ClInclude Include="headerfiles\fir_filter.h" />
     <ClInclude Include="headerfiles\make_datfile.h" />
-    <ClInclude Include="headerfiles\normalizaition.h" />
     <ClInclude Include="headerfiles\sinc.h" />
     <ClInclude Include="headerfiles\wave.h" />
     <ClInclude Include="headerfiles\window_function.h" />

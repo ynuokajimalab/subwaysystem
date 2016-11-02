@@ -5,6 +5,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <string.h>
+#include "./headerfiles/initfile.h"
 #include "./headerfiles/wave.h"
 #include "./headerfiles/window_function.h"
 #include "./headerfiles/sinc.h"
@@ -13,73 +14,65 @@
 #include "./headerfiles/countSound.h"
 #include "./headerfiles/make_datfile.h"
 #include "./headerfiles/dfr_filter.h"
-
+#define OUT_FILE_NUM 4
 
 int main(void)
 {
-	STEREO_PCM pcm0,pcm0_edge, pcm1,pcm1_edge;
-	int n, m, k, J, L, N,ife1,ife2, offset, frame, number_of_frame;
-	double fe1, fe2, delta,xedge_max,yedge_max, tempLmax, tempRmax, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *x_edge, *y_real, *y_imag, *y_edge;
-	char *inputfile, *outputfile,*outputedgefile, *frequency;
-	size_t infsize, outfsize;
+	STEREO_PCM pcm0, bflap_pcm0 = {}, pcm1[OUT_FILE_NUM];
+	IN_FILE inputfile = {};
+	OUT_FILE outputfiles[OUT_FILE_NUM];
+	int n, m, k, J, L, N,ife1,ife2,idelta, offset, frame, number_of_frame;
+	double fe1, fe2, delta,xedge_max,yedge_max[OUT_FILE_NUM / 2], tempLmax, tempRmax, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *x_lpre, *x_lpim, *y_real[OUT_FILE_NUM], *y_imag[OUT_FILE_NUM];
+	char *infilename, *outfilenames[OUT_FILE_NUM];
 
-	//入力ファイルの設定
-	char filename[] = "short1";
+
+	//入力ファイルのデータ
+	char file[] = "short1";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
-	infsize = strlen(directory)+ strlen(filename)+ strlen(filetype)+1;
-	inputfile =(char*)calloc(infsize ,sizeof(char));
-	strcpy(inputfile, directory);
-	strcat(inputfile ,filename);
-	strcat(inputfile, filetype);
+	//BPフィルタのデータ
+	ife1 = 1200;	/* エッジ周波数1 */
+	ife2 = 2000;	/* エッジ周波数2 */
+	idelta = 900;	/* 遷移帯域幅 */
+	//DFTのデータ
+	L = 256; /* フレームの長さ */
+	N = 512; /* DFTのサイズ */
 
 
-	stereo_wave_read(&pcm0,inputfile); /* WAVEファイルからステレオの音データを入力する */
+	//ファイルの初期化処理
+	init_infiles(&inputfile,directory,file,filetype);
+	infilename =(char*)calloc(getinfsize(&inputfile) ,sizeof(char));
+	getinfilename(&inputfile,infilename);
+	init_outfiles(&inputfile,outputfiles,ife1,ife2,idelta);
+	for (int i = 0; i < OUT_FILE_NUM; i++) {
+		outfilenames[i] = (char*)calloc(getoutfsize(&outputfiles[i]), sizeof(char));
+		getoutfilename(&outputfiles[i],outfilenames[i]);
+	}
 
-	pcm1.fs = pcm0.fs; /* 標本化周波数 */
-	pcm1.bits = pcm0.bits; /* 量子化精度 */
-	pcm1.length = pcm0.length; /* 音データの長さ */
-	pcm1.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
-	pcm1.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
+	stereo_wave_read(&pcm0,infilename); /* WAVEファイルからステレオの音データを入力する */
 
-	pcm0_edge.fs = pcm0.fs; /* 標本化周波数 */
-	pcm0_edge.bits = pcm0.bits; /* 量子化精度 */
-	pcm0_edge.length = pcm0.length; /* 音データの長さ */
-	pcm0_edge.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
-	pcm0_edge.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
+	spcmcpy(&bflap_pcm0,&pcm0);
+	for (int i = 0; i < OUT_FILE_NUM;i++) {
+		spcmcpy(&pcm1[i],&pcm0);
+	}
 
-	pcm1_edge.fs = pcm0.fs; /* 標本化周波数 */
-	pcm1_edge.bits = pcm0.bits; /* 量子化精度 */
-	pcm1_edge.length = pcm0.length; /* 音データの長さ */
-	pcm1_edge.sL = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
-	pcm1_edge.sR = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
-
-	fe1 = 1200.0 / (2 * pcm0.fs); /* エッジ周波数1 */
-	fe2 = 2000.0 / (2 * pcm0.fs); /* エッジ周波数2 */
-	delta = 800.0 / (2 * pcm0.fs); /* 遷移帯域幅 */
-	ife1 = (int)(fe1 * 2 * pcm0.fs);
-	ife2 = (int)(fe2 * 2 * pcm0.fs);
-	//5-5桁
-	frequency = (char*)calloc(13, sizeof(char));
-	sprintf(frequency,"_%d-%d",ife1,ife2);
-
+	//BPフィルタｂを作る
+	fe1 = (double)ife1 / (2 * pcm0.fs); /* エッジ周波数1 */
+	fe2 = (double)ife2 / (2 * pcm0.fs); /* エッジ周波数2 */
+	delta = (double)idelta / (2 * pcm0.fs); /* 遷移帯域幅 */
 	J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
 	if (J % 2 == 1)
 	{
 		J++; /* J+1が奇数になるように調整する */
 	}
-
 	b = (double*) calloc((J + 1), sizeof(double)); /* メモリの確保 */
 	w = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
-
 	Hanning_window(w, (J + 1)); /* ハニング窓 */
-
 	FIR_BPF(fe1,fe2, J, b, w); /* FIRフィルタの設計 */
 
-	L = 256; /* フレームの長さ */
-	N = 512; /* DFTのサイズ */
 
-	yedge_max = 0; //edgeデータの最大値
+	yedge_max[0] = 0; //edgeデータの最大値
+	yedge_max[1] = 0; //edgeデータの最大値
 
 	number_of_frame = pcm0.length*2 / L; /* フレームの数 */
 
@@ -88,25 +81,29 @@ int main(void)
 	b_imag = (double*)calloc(N, sizeof(double)); 
 	x_real = (double*)calloc(N, sizeof(double));
 	x_imag = (double*)calloc(N, sizeof(double));
-	x_edge = (double*)calloc(N, sizeof(double));
-	y_real = (double*)calloc(N, sizeof(double));
-	y_imag = (double*)calloc(N, sizeof(double));
-	y_edge = (double*)calloc(N, sizeof(double));
+	x_lpre = (double*)calloc(N, sizeof(double));
+	x_lpim = (double*)calloc(N, sizeof(double));
+	for (int i = 0; i < OUT_FILE_NUM; i++)
+	{
+		y_real[i] = (double*)calloc(N, sizeof(double));
+		y_imag[i] = (double*)calloc(N, sizeof(double));
+	}
 
 	/*エッジ強調処理*/
-	laplacian(pcm0.sL, pcm0_edge.sL, pcm0_edge.length);
-	laplacian(pcm0.sR, pcm0_edge.sR, pcm0_edge.length);
-	//edgestress(y_real, y_edge, N,enhancerate);
-	tempLmax = getMax(pcm0_edge.sL, pcm0_edge.length);
-	tempRmax = getMax(pcm0_edge.sR, pcm0_edge.length);
+	laplacian(pcm0.sL, bflap_pcm0.sL, bflap_pcm0.length);
+	laplacian(pcm0.sR, bflap_pcm0.sR, bflap_pcm0.length);
+	tempLmax = getMax(bflap_pcm0.sL, bflap_pcm0.length);
+	tempRmax = getMax(bflap_pcm0.sR, bflap_pcm0.length);
 	if (tempLmax < tempRmax) {
 		xedge_max = tempRmax;
 	}
 	else {
 		xedge_max = tempLmax;
 	}
-	//memcpy(pcm0.sR, pcm0_edge.sR, pcm0_edge.length);
-	//memcpy(pcm0.sR, pcm0_edge.sR, pcm0_edge.length);
+
+	//音圧レベルの正規化、スペクトルはなまって見える
+	normalize_array(bflap_pcm0.sL, bflap_pcm0.length, xedge_max);
+	normalize_array(bflap_pcm0.sR, bflap_pcm0.length, xedge_max);
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -117,21 +114,26 @@ int main(void)
 		{
 			x_real[n] = 0.0;
 			x_imag[n] = 0.0;
-			x_edge[n] = 0.0;
+			x_lpre[n] = 0.0;
+			x_lpim[n] = 0.0;
+			for (int i = 0; i < OUT_FILE_NUM;i++) {
+				y_real[i][n] = 0;
+				y_imag[i][n] = 0;
+			}
 		}
 		for (n = 0; n < L/2; n++)
 		{
 			x_real[2 * n] = pcm0.sL[(offset/2) + n];
 			x_real[(2 * n) + 1] = pcm0.sR[(offset / 2) + n];
+			x_lpre[2 * n] = bflap_pcm0.sL[(offset / 2) + n];
+			x_lpre[(2 * n) + 1] = bflap_pcm0.sR[(offset / 2) + n];
 		}
 
 		/*エッジ強調処理*/
 		//laplacian(x_real, x_edge, N);
-		//edgestress(y_real, y_edge, N,enhancerate);
-
-	    //memcpy(x_real,x_edge,N);
 
 		FFT(x_real, x_imag, N);
+		FFT(x_lpre, x_lpim, N);
 
 		/* b(m)のFFT */
 		for (m = 0; m < N; m++)
@@ -148,94 +150,78 @@ int main(void)
 		/* フィルタリング */
 		for (k = 0; k < N; k++)
 		{
-			y_real[k] = x_real[k] * b_real[k] - x_imag[k] * b_imag[k];
-			y_imag[k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
-
-			y_edge[k] = 0;
+			y_real[0][k] = x_real[k] * b_real[k] - x_imag[k] * b_imag[k];
+			y_imag[0][k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
+			y_real[2][k] = x_lpre[k] * b_real[k] - x_lpim[k] * b_imag[k];
+			y_imag[2][k] = x_lpim[k] * b_real[k] + x_lpre[k] * b_imag[k];
 		}
 
-		IFFT(y_real, y_imag, N);
+		IFFT(y_real[0], y_imag[0], N);
+		IFFT(y_real[2], y_imag[2], N);
 
 		/*エッジ強調処理*/
-		laplacian(y_real, y_edge, N);
-		//edgestress(y_real, y_edge, N,enhancerate);
-
+		//laplacian(y_real, y_edge, N);
 
 		/* フィルタリング結果の連結 */
 		for (n = 0; n < L * 2/2; n++)
 		{
-			if ((offset/2) + n < pcm1.length)
+			if ((offset/2) + n < pcm0.length)
 			{	
-				pcm1.sL[(offset / 2) + n] += y_real[2 * n];
-				pcm1.sR[(offset / 2) + n] += y_real[(2 * n) + 1];
+				pcm1[0].sL[(offset / 2) + n] += y_real[0][2 * n];
+				pcm1[0].sR[(offset / 2) + n] += y_real[0][(2 * n) + 1];
 
-				pcm1_edge.sL[(offset/2) + n] += y_edge[2 * n];			
-				pcm1_edge.sR[(offset/2) + n] += y_edge[(2*n)+1];
+				pcm1[2].sL[(offset/2) + n] += y_real[2][2 * n];			
+				pcm1[2].sR[(offset/2) + n] += y_imag[2][(2*n)+1];
 			}
 		}
 	}
 
 	/*エッジ強調処理*/
-	laplacian(pcm1.sL, pcm1_edge.sL, pcm1_edge.length);
-	laplacian(pcm1.sR, pcm1_edge.sR, pcm1_edge.length);
-	//edgestress(y_real, y_edge, N,enhancerate);
-
-
-	tempLmax = getMax(pcm1_edge.sL,pcm1_edge.length);
-	tempRmax = getMax(pcm1_edge.sR, pcm1_edge.length);
-
-	if (tempLmax < tempRmax) {
-		yedge_max = tempRmax;
-	}else{
-		yedge_max = tempLmax;
-	}
-
+	laplacian(pcm1[0].sL, pcm1[1].sL, pcm1[1].length);
+	laplacian(pcm1[0].sR, pcm1[1].sR, pcm1[1].length);
+	laplacian(pcm1[2].sL, pcm1[3].sL, pcm1[3].length);
+	laplacian(pcm1[2].sR, pcm1[3].sR, pcm1[3].length);
 	
 	//音圧レベルの正規化、スペクトルはなまって見える
-	normalize_array(pcm1_edge.sL, pcm1_edge.length, yedge_max);
-	normalize_array(pcm1_edge.sR, pcm1_edge.length, yedge_max);
+	for (int i = 0; i < OUT_FILE_NUM / 2;i++) {
+		tempLmax = getMax(pcm1[2*i +1].sL, pcm1[2*i +1].length);
+		tempRmax = getMax(pcm1[2*i +1].sR, pcm1[2*i +1].length);
+		if (tempLmax < tempRmax) {
+			yedge_max[i] = tempRmax;
+		}else{
+			yedge_max[i] = tempLmax;
+		}
+	normalize_array(pcm1[2 * i + 1].sL, pcm1[2 * i + 1].length, yedge_max[i]);
+	normalize_array(pcm1[2 * i + 1].sR, pcm1[2 * i + 1].length, yedge_max[i]);
+	}
 
-	//ファイル名
-	outfsize = strlen(directory) + 4 + strlen(filename) + strlen(frequency) +strlen(filetype) + 1;
-	outputfile = (char*)calloc(outfsize,sizeof(char));
-	outputedgefile = (char*)calloc(outfsize+5, sizeof(char));
-	strcpy(outputfile, directory);
-	strcat(outputfile, "out_");
-	strcpy(outputedgefile, outputfile);
-	strcat(outputedgefile,"edge_");
-	strcat(outputfile, filename);
-	strcat(outputfile, frequency);
-	strcat(outputfile,filetype);
-	strcat(outputedgefile, filename);
-	strcat(outputedgefile, frequency);
-	strcat(outputedgefile, filetype);
-
-	stereo_wave_write(&pcm1, outputfile); /* WAVEファイルにモノラルの音データを出力する */
-	stereo_wave_write(&pcm1_edge, outputedgefile); /* WAVEファイルにモノラルの音データを出力する */
+	for (int i = 0; i < OUT_FILE_NUM;i++) {
+	stereo_wave_write(&pcm1[i], outfilenames[i]); /* WAVEファイルにモノラルの音データを出力する */
+	}
+	
 
 	 /* メモリの解放 */
-	free(frequency);
-	free(inputfile);
-	free(outputfile);
-	free(outputedgefile);
+	free(infilename);
 	free(pcm0.sL);
 	free(pcm0.sR);
-	free(pcm1.sL); 
-	free(pcm1.sR);
-	free(pcm0_edge.sL);
-	free(pcm0_edge.sR);
-	free(pcm1_edge.sL); 
-	free(pcm1_edge.sR); 
+	free(bflap_pcm0.sL);
+	free(bflap_pcm0.sR);
 	free(b); 
 	free(w);
 	free(b_real);
 	free(b_imag);
 	free(x_real);
 	free(x_imag);
-	free(x_edge);
-	free(y_real);
-	free(y_imag);
-	free(y_edge);
+	free(x_lpre);
+	free(x_lpim);
+	for (int i = 0; i < OUT_FILE_NUM; i++)
+	{
+	free(outfilenames[i]);
+	free(pcm1[i].sL); 
+	free(pcm1[i].sR);
+	free(y_real[i]);
+	free(y_imag[i]);
+	}
 
 
 	//printf("counts =%d\n count = %d\n",counts,count);

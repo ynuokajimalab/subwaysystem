@@ -303,3 +303,18 @@ void stereo_wave_write(STEREO_PCM *pcm, char *file_name)
 
 	fclose(fp);
 }
+
+void mpcmcpy(MONO_PCM *destinationpcm, MONO_PCM *sourcepcm) {
+	destinationpcm->fs = sourcepcm->fs; /* 標本化周波数 */
+	destinationpcm->bits = sourcepcm->bits; /* 量子化精度 */
+	destinationpcm->length = sourcepcm->length; /* 音データの長さ */
+	destinationpcm->s = (double*)calloc(destinationpcm->length, sizeof(double)); /* メモリの確保 */
+}
+
+void spcmcpy(STEREO_PCM *destinationpcm, STEREO_PCM *sourcepcm) {
+	destinationpcm->fs = sourcepcm->fs; /* 標本化周波数 */
+	destinationpcm->bits = sourcepcm->bits; /* 量子化精度 */
+	destinationpcm->length = sourcepcm->length; /* 音データの長さ */
+	destinationpcm->sL = (double*)calloc(destinationpcm->length, sizeof(double)); /* メモリの確保 */
+	destinationpcm->sR = (double*)calloc(destinationpcm->length, sizeof(double)); /* メモリの確保 */
+}
