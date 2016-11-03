@@ -153,6 +153,7 @@
     <ClInclude Include="headerfiles\dfr_filter.h" />
     <ClInclude Include="headerfiles\fft.h" />
     <ClInclude Include="headerfiles\fir_filter.h" />
+    <ClInclude Include="headerfiles\initfile.h" />
     <ClInclude Include="headerfiles\make_datfile.h" />
     <ClInclude Include="headerfiles\sinc.h" />
     <ClInclude Include="headerfiles\wave.h" />
