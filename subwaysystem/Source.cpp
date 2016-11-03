@@ -18,8 +18,8 @@
 
 int main(void)
 {
-	STEREO_PCM pcm0, bflap_pcm0 = {}, pcm1[OUT_FILE_NUM];
-	IN_FILE inputfile = {};
+	STEREO_PCM pcm0, bflap_pcm0, pcm1[OUT_FILE_NUM];
+	IN_FILE inputfile;
 	OUT_FILE outputfiles[OUT_FILE_NUM];
 	int n, m, k, J, L, N,ife1,ife2,idelta, offset, frame, number_of_frame;
 	double fe1, fe2, delta,xedge_max,yedge_max[OUT_FILE_NUM / 2], tempLmax, tempRmax, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *x_lpre, *x_lpim, *y_real[OUT_FILE_NUM], *y_imag[OUT_FILE_NUM];
@@ -27,12 +27,12 @@ int main(void)
 
 
 	//入力ファイルのデータ
-	char file[] = "short1";
+	char file[] = "thelatest";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
 	//BPフィルタのデータ
-	ife1 = 1200;	/* エッジ周波数1 */
-	ife2 = 2000;	/* エッジ周波数2 */
+	ife1 = 2500;	/* エッジ周波数1 */
+	ife2 = 3500;	/* エッジ周波数2 */
 	idelta = 900;	/* 遷移帯域幅 */
 	//DFTのデータ
 	L = 256; /* フレームの長さ */
@@ -92,8 +92,10 @@ int main(void)
 	/*エッジ強調処理*/
 	laplacian(pcm0.sL, bflap_pcm0.sL, bflap_pcm0.length);
 	laplacian(pcm0.sR, bflap_pcm0.sR, bflap_pcm0.length);
-	tempLmax = getMax(bflap_pcm0.sL, bflap_pcm0.length);
-	tempRmax = getMax(bflap_pcm0.sR, bflap_pcm0.length);
+	//tempLmax = getMax(bflap_pcm0.sL, bflap_pcm0.length);
+	//tempRmax = getMax(bflap_pcm0.sR, bflap_pcm0.length);
+	tempLmax = getbeforeMax(bflap_pcm0.sL, bflap_pcm0.length);
+	tempRmax = getbeforeMax(bflap_pcm0.sR, bflap_pcm0.length);
 	if (tempLmax < tempRmax) {
 		xedge_max = tempRmax;
 	}
@@ -105,6 +107,8 @@ int main(void)
 	normalize_array(bflap_pcm0.sL, bflap_pcm0.length, xedge_max);
 	normalize_array(bflap_pcm0.sR, bflap_pcm0.length, xedge_max);
 
+
+	//フレーム単位の周波数領域での処理
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
 		offset = L * frame;
@@ -171,7 +175,7 @@ int main(void)
 				pcm1[0].sR[(offset / 2) + n] += y_real[0][(2 * n) + 1];
 
 				pcm1[2].sL[(offset/2) + n] += y_real[2][2 * n];			
-				pcm1[2].sR[(offset/2) + n] += y_imag[2][(2*n)+1];
+				pcm1[2].sR[(offset/2) + n] += y_real[2][(2 * n)+1];
 			}
 		}
 	}
@@ -191,8 +195,8 @@ int main(void)
 		}else{
 			yedge_max[i] = tempLmax;
 		}
-	normalize_array(pcm1[2 * i + 1].sL, pcm1[2 * i + 1].length, yedge_max[i]);
-	normalize_array(pcm1[2 * i + 1].sR, pcm1[2 * i + 1].length, yedge_max[i]);
+	//normalize_array(pcm1[2 * i + 1].sL, pcm1[2 * i + 1].length, yedge_max[i]);
+	//normalize_array(pcm1[2 * i + 1].sR, pcm1[2 * i + 1].length, yedge_max[i]);
 	}
 
 	for (int i = 0; i < OUT_FILE_NUM;i++) {

@@ -36,10 +36,29 @@ double getMax(double *array,int arraysize) {
 			printf("%lf\n", max);	//デバッグコード
 		}else if (max < -array[i]) {
 			max = -array[i];
-			printf("%lf\n",max);	//デバッグコード
+			printf("%-lf\n",max);	//デバッグコード
 		}
 	}
 	printf("array_max = %lf\n", max);	//デバッグコード
 	return max;
+}
+
+double getbeforeMax(double *array, int arraysize) {
+	double max = 0;
+	double temp = 0;
+	for (int i = 1; i < arraysize - 1; i++) {
+		if (max < array[i]) {
+			temp = max;
+			max = array[i];
+			printf("%lf\n", max);	//デバッグコード
+		}
+		else if (max < -array[i]) {
+			temp = max;
+			max = -array[i];
+			printf("%-lf\n", max);	//デバッグコード
+		}
+	}
+	printf("array_bfmax = %lf\n", temp);	//デバッグコード
+	return temp;
 }
 

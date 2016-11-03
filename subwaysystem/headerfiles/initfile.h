@@ -76,10 +76,10 @@ void getoutfilename(OUT_FILE *outputfile , char* filename) {
 	strcpy(filename, outputfile->directory);
 	strcat(filename, "out_");
 	strcat(filename,outputfile->orgfilename);
+	strcat(filename,frequency);
 	if (outputfile->done_bf_lap) {
 	strcat(filename, "_bflap");
 	}
-	strcat(filename,frequency);
 	if (outputfile->done_af_lap) {
 		strcat(filename, "_aflap");
 	}
