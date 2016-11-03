@@ -149,20 +149,14 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="countSound.h" />
-    <ClInclude Include="fft.h" />
-    <ClInclude Include="fir_filter.h" />
-    <ClInclude Include="sinc.h" />
-    <ClInclude Include="wave.h" />
-    <ClInclude Include="window_function.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Media Include="005_160615_0941V0.WAV" />
-    <Media Include="short1.WAV" />
-    <Media Include="short2.WAV" />
-    <Media Include="short3.WAV" />
-    <Media Include="zoom1.WAV" />
-    <Media Include="zoom2.WAV" />
+    <ClInclude Include="headerfiles\countSound.h" />
+    <ClInclude Include="headerfiles\dfr_filter.h" />
+    <ClInclude Include="headerfiles\fft.h" />
+    <ClInclude Include="headerfiles\fir_filter.h" />
+    <ClInclude Include="headerfiles\make_datfile.h" />
+    <ClInclude Include="headerfiles\sinc.h" />
+    <ClInclude Include="headerfiles\wave.h" />
+    <ClInclude Include="headerfiles\window_function.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -20,43 +20,29 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="sinc.h">
+    <ClInclude Include="headerfiles\countSound.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="fft.h">
+    <ClInclude Include="headerfiles\dfr_filter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="fir_filter.h">
+    <ClInclude Include="headerfiles\fft.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="window_function.h">
+    <ClInclude Include="headerfiles\fir_filter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="wave.h">
+    <ClInclude Include="headerfiles\make_datfile.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="countSound.h">
+    <ClInclude Include="headerfiles\sinc.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Media Include="005_160615_0941V0.WAV">
-      <Filter>リソース ファイル</Filter>
-    </Media>
-    <Media Include="short3.WAV">
-      <Filter>リソース ファイル</Filter>
-    </Media>
-    <Media Include="short1.WAV">
-      <Filter>リソース ファイル</Filter>
-    </Media>
-    <Media Include="short2.WAV">
-      <Filter>リソース ファイル</Filter>
-    </Media>
-    <Media Include="zoom2.WAV">
-      <Filter>リソース ファイル</Filter>
-    </Media>
-    <Media Include="zoom1.WAV">
-      <Filter>リソース ファイル</Filter>
-    </Media>
+    <ClInclude Include="headerfiles\wave.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="headerfiles\window_function.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
