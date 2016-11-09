@@ -207,6 +207,7 @@ int main(void)
 		stereo_wave_write(&pcm1[i], outfilenames[i]);
 	}
 
+	printf("sec = %lf\n",(double)(number_of_frame * (L+1)) / (double)(4*pcm0.fs));
 
 	/* ƒƒ‚ƒŠ‚Ì‰ğ•ú */
 	free(infilename);
