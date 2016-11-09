@@ -1,9 +1,9 @@
 #pragma once
 //âºÅIÅI
-void getnoize(double n_real[], double n_imag[], int size, double threshold) {
-	for (int k = 0; k < size; k++) {
-		n_real[k] = threshold;
-		n_imag[k] = 0.0;
+void setnoise(double n_real[], double n_imag[],double x_real[], int size, int frame) {
+		for (int k = 0; k < size; k++) {
+			n_real[k] = (n_real[k]*frame + x_real[k]) / (frame+1);
+			n_imag[k] = 0.0;
 	}
 }
 
