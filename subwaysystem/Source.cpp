@@ -15,7 +15,7 @@ int main(void)
 {
 	STEREO_PCM pcm0, pcm1;
 	int n, k, J, N, offset, frame, number_of_frame;
-	double fe1, fe2 ,max, delta, threshold, *b, *w, *x_real, *x_imag, *A, *T, *y_real, *y_imag;
+	double fe1, fe2 ,delta, threshold, *b, *w, *x_real, *x_imag, *A, *T, *y_real, *y_imag;
 
 	stereo_wave_read(&pcm0, "thelatest.WAV"); /* WAVEファイルからステレオの音データを入力する */
 
@@ -81,19 +81,6 @@ int main(void)
 			}
 		}
 		
-		max = A[0];
-		for (k = 0; k < N; k++)
-		{
-			if (A[k] > max)
-				max = A[k];
-		}
-
-		for (k = 0; k < N; k++)
-		{
-			if (A[k] != max)
-				A[k] = 0.0;
-		}
-
 		/* スペクトルサブトラクション */
 		for (k = 0; k < N; k++)
 		{
@@ -101,6 +88,8 @@ int main(void)
 			y_imag[k] = A[k] * sin(T[k]);
 		}
 		IFFT(y_real, y_imag, N);
+		if (A[k] = 1.0)
+			printf("time=%d", k);
 
 		/* 加工結果の連結 */
 		for (n = 0; n < N / 2; n++)
@@ -109,6 +98,8 @@ int main(void)
 			pcm1.sR[offset / 2 + n] += y_real[2 * n + 1];
 		}
 	}
+	if (A[k] = 1.0)
+		printf("time=%d", k);
 
 	stereo_wave_write(&pcm1, "try.WAV"); /* WAVEファイルにステレオの音データを出力する */
 
