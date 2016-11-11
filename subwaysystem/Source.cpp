@@ -28,7 +28,7 @@ int main(void)
 
 
 	//入力ファイルのデータ
-	char file[] = "short1";
+	char file[] = "sample10";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
 	//BPフィルタのデータ
