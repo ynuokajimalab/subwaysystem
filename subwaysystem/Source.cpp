@@ -39,7 +39,7 @@ int main(void)
 	L = 1024; 
 	//ノイズのデータ
 	int str_frame = 20;
-	int fin_frame = 100;
+	int fin_frame = 50;
 
 
 	//ファイルの初期化処理
@@ -164,19 +164,9 @@ int main(void)
 			setnoise(n_real, n_imag, x_lpre, L, frame);
 		}
 
-		/* FFT */
-		FFT(n_real, n_imag, L);
-		FFT(x_real, x_imag, L);
-		FFT(x_lpre, x_lpim, L);
-
-		/*スペクトルサブトラクション(仮！！)*/
-		do_subtruction(x_real, x_imag, n_real, n_imag, L);
-		do_subtruction(x_lpre, x_lpim, n_real, n_imag, L);
-
-		/* IFFT */
-		IFFT(n_real, n_imag, L);
-		IFFT(x_real, x_imag, L);
-		IFFT(x_lpre, x_lpim, L);
+		///*スペクトルサブトラクション(仮！！)*/
+		do_subtruction(x_real, x_imag, n_real, n_imag,wN, L);
+		do_subtruction(x_lpre, x_lpim, n_real, n_imag,wN, L);
 
 		for (n = 0; n < L / 2; n++)
 		{
@@ -206,7 +196,6 @@ int main(void)
 	for (int i = 0; i < OUT_FILE_NUM; i++) {
 		stereo_wave_write(&pcm1[i], outfilenames[i]);
 	}
-
 
 	/* メモリの解放 */
 	free(infilename);

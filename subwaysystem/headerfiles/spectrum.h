@@ -33,8 +33,17 @@ void subtruction(double org_amp[], double noize_amp[], int size) {
 	}
 }
 
-void do_subtruction(double s_real[], double s_imag[], double n_real[], double n_imag[], int size) {
+//ŽžŠÔ—Ìˆæ‚Å“ü—Í
+void do_subtruction(double s_real[], double s_imag[], double n_real[], double n_imag[],double w[], int size) {
 	double *s_amp, *s_phas, *n_amp, *n_phas;
+
+	for (int i = 0; i < size;i++) {
+		s_real[i] *= w[i];
+	}
+
+	FFT(n_real, n_imag, size);
+	FFT(s_real, s_imag, size);
+
 	s_amp = (double*)calloc(size, sizeof(double));
 	s_phas = (double*)calloc(size, sizeof(double));
 	n_amp = (double*)calloc(size, sizeof(double));
@@ -49,6 +58,10 @@ void do_subtruction(double s_real[], double s_imag[], double n_real[], double n_
 	getampphase(n_real, n_imag, n_amp, n_phas, size);
 	subtruction(s_amp, n_amp, size);
 	getrealimage(s_real, s_imag, s_amp, s_phas, size);
+
+	IFFT(n_real, n_imag, size);
+	IFFT(s_real, s_imag, size);
+
 	free(s_amp);
 	free(s_phas);
 	free(n_amp);
