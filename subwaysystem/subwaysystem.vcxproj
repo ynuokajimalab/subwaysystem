@@ -150,9 +150,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="countSound.h" />
+    <ClInclude Include="dfr_filter.h" />
     <ClInclude Include="fft.h" />
     <ClInclude Include="fir_filter.h" />
+    <ClInclude Include="initfile.h" />
+    <ClInclude Include="make_datfile.h" />
     <ClInclude Include="sinc.h" />
+    <ClInclude Include="spectrum.h" />
     <ClInclude Include="wave.h" />
     <ClInclude Include="window_function.h" />
   </ItemGroup>

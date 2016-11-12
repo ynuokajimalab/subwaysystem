@@ -5,16 +5,16 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <string.h>
-#include "./headerfiles/initfile.h"
-#include "./headerfiles/wave.h"
-#include "./headerfiles/window_function.h"
-#include "./headerfiles/sinc.h"
-#include "./headerfiles/fir_filter.h"
-#include "./headerfiles/fft.h"
-#include "./headerfiles/countSound.h"
-#include "./headerfiles/make_datfile.h"
-#include "./headerfiles/dfr_filter.h"
-#include "./headerfiles/spectrum.h"
+#include "initfile.h"
+#include "wave.h"
+#include "window_function.h"
+#include "sinc.h"
+#include "fir_filter.h"
+#include "fft.h"
+#include "countSound.h"
+#include "make_datfile.h"
+#include "dfr_filter.h"
+#include "spectrum.h"
 #define OUT_FILE_NUM 4
 
 int main(void)
