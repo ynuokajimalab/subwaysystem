@@ -19,14 +19,14 @@ typedef struct
 } OUT_FILE;
 
 void init_infiles(IN_FILE *inputfile, char* directory, char* infilename, char* filetype) {
-	//inputfile ‚ÌÝ’è
+	//inputfile の設定
 	inputfile->filename = infilename;
 	inputfile->directory = directory;
 	inputfile->filetype = filetype;
 }
 
 void init_outfiles(IN_FILE *inputfile, OUT_FILE *outputfiles, int fe1, int fe2, int delta) {
-	//4‚Â‚Ì outputfile ‚ÌÝ’è
+	//4つの outputfile の設定
 	for (int i = 0; i < 4; i++) {
 		(outputfiles + i)->orgfilename = inputfile->filename;
 		(outputfiles + i)->directory = inputfile->directory;

@@ -28,7 +28,7 @@ void postscript_datfile(char *filename, double data[], int datasize, int index) 
 }
 
 
-//inputfile ‚Ìƒf[ƒ^”‚ðcompressionrate‚¾‚¯ˆ³k
+//inputfile のデータ数をcompressionrateだけ圧縮
 double sampling_data(char *inputfilename, char *outputfilename, int compressionrate) {
 	int index;
 	double data;

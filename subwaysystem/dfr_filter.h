@@ -62,4 +62,3 @@ double getbeforeMax(double *array, int arraysize) {
 	printf("array_bfmax = %lf\n", temp);	//デバッグコード
 	return temp;
 }
-
