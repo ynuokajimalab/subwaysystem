@@ -50,5 +50,8 @@
     <ClInclude Include="headerfiles\initfile.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="headerfiles\frame-time.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
