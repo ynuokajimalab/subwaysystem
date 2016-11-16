@@ -11,6 +11,8 @@
 #include "fft.h"
 #include "countSound.h"
 
+double getsec(int frame, int datanum, double fs);
+
 int main(void)
 {
 	STEREO_PCM pcm0, pcm1;
@@ -126,11 +128,12 @@ int main(void)
 		if (max > 52.0)
 		{
 				count++;
-				printf("frame = %d, max:A[%d]=%lf\n",frame, maxindex, max);
+				printf("frame = %d, time = %lf, max:A[%d]=%lf\n",frame,getsec(frame,L,pcm0.fs), maxindex, max);
 		}
 
 	}
 	printf("回数：%d", count);
+	printf("fin_time = %lf\n",getsec(number_of_frame,L,pcm0.fs));
 
 	stereo_wave_write(&pcm1, "try.WAV"); /* WAVEファイルにステレオの音データを出力する */
 
@@ -149,3 +152,10 @@ int main(void)
 }
 
 
+double getsec(int frame, int datanum, double fs) {
+	double sec;
+
+	sec = ((double)(datanum*(frame + 1)) / (double)(4 * fs));
+
+	return 0;
+}
