@@ -17,7 +17,7 @@ int main(void)
 {
 	STEREO_PCM pcm0, pcm1;
 	int m, n, J, k, N, L, offset, frame, number_of_frame, count, maxindex;
-	double fe1, fe2, delta, *b, *b_real, *b_imag, *w, *x_real, *x_imag, *A, *y_real, *y_imag, max, calculate;
+	double fe1, fe2, delta, *b, *b_real, *b_imag, *w, *x_real, *x_imag, *A, *y_real, *y_imag, max, average, sum, dispersion_ex, dispersion;
 
 	stereo_wave_read(&pcm0, "short1.WAV"); /* WAVEファイルからステレオの音データを入力する */
 
@@ -60,10 +60,11 @@ int main(void)
 
 	count = 0;
 	max = A[0];
-	calculate = pow(10, 2.25);
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
+		sum = 0.0;
+		dispersion_ex = 0.0;
 		offset = L * frame;
 		max = 0.0;
 		maxindex = 0;
@@ -119,22 +120,41 @@ int main(void)
 		}
 
 		for (k = 0; k < N; k++)
-		/*{
+		{
+			sum += A[k];
+		}
+		average = sum / N;
+		for (k = 0; k < N; k++)
+		{
+			dispersion_ex += (average - A[k])*(average - A[k]);
+		}
+		dispersion = dispersion_ex / N;
+		/*printf("dispersion=%lf\n", dispersion);
+		printf("average=%lf\n",average);
+*/
+		for (k = 0; k < N; k++)
+		{
+			if (A[k] > 52) {
+				count++;
+				printf("frame=%d,A[%d]=%lf\n", frame, k, A[k]);
+			}
+		}
+
+		/*for (k = 0; k < N; k++) {
 			if (A[k] > max)
 			{
 				max = A[k];
 				maxindex = k;
 			}
-			printf("A[0]の値:%lf\n",A[0]);
-		}*/
-		if (A[k] > calculate*A[0])
+		}
+		if (A[maxindex] > 40)
 		{
 				count++;
-				/*printf("frame = %d, time = %lf, max:A[%d]=%lf\n",frame,getsec(frame,L,pcm0.fs), maxindex, max);*/
-		}
+				printf("frame = %d, time = %lf, max:A[%d]=%lf\n",frame,getsec(frame,L,pcm0.fs), maxindex, A[maxindex]);
+		}*/
 
 	}
-	printf("回数：%d", count);
+	printf("回数：%d\n", count);
 	/*printf("fin_time = %lf\n",getsec(number_of_frame,L,pcm0.fs));*/
 
 	stereo_wave_write(&pcm1, "try.WAV"); /* WAVEファイルにステレオの音データを出力する */
