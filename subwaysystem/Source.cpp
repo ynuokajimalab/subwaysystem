@@ -27,12 +27,12 @@ int main(void)
 
 
 	//入力ファイルのデータ
-	char file[] = "thelatest";
+	char file[] = "short2";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
 	//BPフィルタのデータ
-	ife1 = 2500;	/* エッジ周波数1 */
-	ife2 = 3500;	/* エッジ周波数2 */
+	ife1 = 1000;	/* エッジ周波数1 */
+	ife2 = 2000;	/* エッジ周波数2 */
 	idelta = 900;	/* 遷移帯域幅 */
 	//DFTのデータ
 	L = 256; /* フレームの長さ */
