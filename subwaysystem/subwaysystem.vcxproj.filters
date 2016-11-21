@@ -53,5 +53,8 @@
     <ClInclude Include="headerfiles\frame-time.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\Downloads\chapter07\chapter07\ex7_1\iir_filter.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

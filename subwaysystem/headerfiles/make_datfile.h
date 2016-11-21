@@ -1,26 +1,30 @@
 #pragma once
 #include <stdio.h>
 
-void make_datfile(char *filename, double data[], int datasize){
+typedef struct
+{
+	double time;
+	int freequency;
+	double power;
+} SPECTROGRAM;
+
+
+void make_datfile(char *filename){
 
 	FILE *fp;
 	fp = fopen(filename, "w");
-
-	for (int i = 0; i < datasize; i++) {
-		fprintf(fp, "%d %lf\n",i, data[i]);
-	}
-	fprintf(fp,"\n\n");
+	printf("データファイル作成\n");
 	fclose(fp);
 
 }
 
-void postscript_datfile(char *filename, double data[],int datasize,int index){
+void postscript_datfile(char *filename,SPECTROGRAM spectorogram[], int samplenumber){
 
 	FILE *fp;
 	fp = fopen(filename, "a");
 
-	for (int i = 0; i < datasize; i++) {
-		fprintf(fp, "%d %lf\n", index + i, data[i]);
+	for (int i = 0; i < samplenumber; i++) {
+		fprintf(fp, "%lf %d %lf\n",spectorogram[i].time,spectorogram[i].freequency,spectorogram[i].power);
 	}	
 	
 	fclose(fp);	

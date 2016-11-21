@@ -149,6 +149,7 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\Downloads\chapter07\chapter07\ex7_1\iir_filter.h" />
     <ClInclude Include="headerfiles\countSound.h" />
     <ClInclude Include="headerfiles\dfr_filter.h" />
     <ClInclude Include="headerfiles\fft.h" />

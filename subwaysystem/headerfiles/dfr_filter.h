@@ -28,29 +28,33 @@ void edgestress(double *orgdatas, double *edgedatas, int arraysize,double rate) 
 	}
 }
 
-double getMax(double array[],int arraysize) {
+int getMaxindex(double array[],int arraysize) {
 	double max = 0,data = 0;
+	int index = 0;
 	for (int i = 0; i < arraysize ; i++) {
-		data = fabs(array[i]);
+		data = (array[i]);
 		if (max < data) {
 			max = data;
-		//	printf("%lf\n", max);	//デバッグコード
+			index = i;
+		printf("%lf,%d\n", max,index);	//デバッグコード
 		}
 	}
-	printf("array_max = %lf\n", max);	//デバッグコード
-	return max;
+	printf("array_max = %lf, index = %d\n", max,index);	//デバッグコード
+	return index;
 }
-double getMin(double *array, int arraysize) {
-	double min = 1,data = 0;
+int getMinindex(double *array, int arraysize) {
+	double min = 1, data = 0;
+		int index = 0;
 	for (int i = 0; i < arraysize ; i++) {
-		data = fabs(array[i]);
+		data = (array[i]);
 		if (min > data) {
 			min = data;
+			index = i;
 			//printf("%lf\n", min);	//デバッグコード
 		}
 	}
 	printf("array_min = %lf\n", min);	//デバッグコード
-	return min;
+	return index;
 }
 
 double getbeforeMax(double *array, int arraysize) {

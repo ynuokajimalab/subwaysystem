@@ -17,39 +17,26 @@ void getrealimage(double real[], double image[], double amplitude[], double phas
 	}
 }
 
-void setnoise(double n_real[], double n_imag[],double n_amp[], double n_phas[], double w[],STEREO_PCM pcm0, int FFTsize,int framelength, int noise_frame1, int noise_frame2) {
-	int k,n,offset;
-	int frame;
+void setnoise(double n_real[], double n_imag[],double n_amp[], double n_phas[],STEREO_PCM noise_pcm) {
+	int i, n_size;
+	n_size = noise_pcm.length * 2;
 
-	for (frame = noise_frame1; frame < noise_frame2;frame++) {
-		offset = (framelength / 2) * frame;
-		for (n = 0; n < FFTsize / 2; n++)
-		{
-			n_real[2 * n] += pcm0.sL[(offset / 2) + n];
-			n_real[(2 * n) + 1] += pcm0.sR[(offset / 2) + n];
+	for (i = 0; i < noise_pcm.length;i++) {
+			n_real[2 * i] = noise_pcm.sL[i];
+			n_real[(2 * i) + 1] = noise_pcm.sR[i];
+			n_imag[2 * i] = 0;
+			n_imag[(2 * i) + 1] = 0;
 		}
-	}
-
-	for (k = 0; k < FFTsize; k++) {
-		n_real[k] = (n_real[k] * w[k])/(noise_frame2-noise_frame1+1);
-		//n_real[k] = (n_real[k] * w[k]) / sqrt(noise_frame2 - noise_frame1 + 1);
-
-		n_imag[k] = 0.0;
-	}
-	FFT(n_real, n_imag, FFTsize);
-	getampphase(n_real,n_imag,n_amp,n_phas,FFTsize);
-	IFFT(n_real, n_imag, FFTsize);
-
-	//for (k = 0; k < FFTsize; k++) {
-	//	printf("n_amp[%d] = %lf\n",k, n_amp[k]);
-	//}
+	FFT(n_real, n_imag,n_size);
+	getampphase(n_real, n_imag, n_amp, n_phas, n_size);
+	IFFT(n_real, n_imag, n_size);
 }
 
 void subtruction(double org_amp[], double noize_amp[], int size) {
 	for (int k = 0; k < size; k++) {
 		//printf("%d::%lf - %lf = ",k,org_amp[k],noize_amp[k]);
 		//org_amp[k] -= noize_amp[k];
-		org_amp[k] -= 3.0;//test cord
+		org_amp[k] -= 1.0;//test cord
 		if (org_amp[k] < 0.0) {
 			org_amp[k] = 0.0;
 		}
