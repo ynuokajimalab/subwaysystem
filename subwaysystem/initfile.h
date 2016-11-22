@@ -19,14 +19,18 @@ typedef struct
 } OUT_FILE;
 
 void init_infiles(IN_FILE *inputfile, char* directory, char* infilename, char* filetype) {
-	//inputfile の設定
+	//inputfile ‚ÌÝ’è
 	inputfile->filename = infilename;
 	inputfile->directory = directory;
 	inputfile->filetype = filetype;
+
+	(inputfile + 1)->filename = infilename;
+	(inputfile + 1)->directory = directory;
+	(inputfile + 1)->filetype = filetype;
 }
 
 void init_outfiles(IN_FILE *inputfile, OUT_FILE *outputfiles, int fe1, int fe2, int delta) {
-	//4つの outputfile の設定
+	//4‚Â‚Ì outputfile ‚ÌÝ’è
 	for (int i = 0; i < 4; i++) {
 		(outputfiles + i)->orgfilename = inputfile->filename;
 		(outputfiles + i)->directory = inputfile->directory;
@@ -61,11 +65,17 @@ size_t getoutfsize(OUT_FILE *outputfile) {
 	return outfsize;
 }
 
-void getinfilename(IN_FILE *inputfile, char* filename) {
+void getinfilename(IN_FILE *inputfile, char* filename[]) {
 
-	strcpy(filename, inputfile->directory);
-	strcat(filename, inputfile->filename);
-	strcat(filename, inputfile->filetype);
+	int i = 0;
+	strcpy(filename[0], (inputfile + i)->directory);
+	strcat(filename[0], (inputfile + i)->filename);
+	strcat(filename[0], (inputfile + i)->filetype);
+
+	strcpy(filename[1], (inputfile + i)->directory);
+	strcat(filename[1], "cut_");
+	strcat(filename[1], (inputfile + i)->filename);
+	strcat(filename[1], (inputfile + i)->filetype);
 
 }
 
