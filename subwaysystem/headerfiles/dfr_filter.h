@@ -36,10 +36,10 @@ int getMaxindex(double array[],int arraysize) {
 		if (max < data) {
 			max = data;
 			index = i;
-		printf("%lf,%d\n", max,index);	//デバッグコード
+		//printf("%lf,%d\n", max,index);	//デバッグコード
 		}
 	}
-	printf("array_max = %lf, index = %d\n", max,index);	//デバッグコード
+	//printf("array_max = %lf, index = %d\n", max,index);	//デバッグコード
 	return index;
 }
 int getMinindex(double *array, int arraysize) {

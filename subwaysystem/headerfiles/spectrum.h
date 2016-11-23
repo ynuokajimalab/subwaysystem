@@ -17,7 +17,7 @@ void getrealimage(double real[], double image[], double amplitude[], double phas
 	}
 }
 
-void setnoise(double n_real[], double n_imag[],double n_amp[], double n_phas[],STEREO_PCM noise_pcm) {
+void setnoise(double n_real[], double n_imag[],STEREO_PCM noise_pcm) {
 	int i, n_size;
 	n_size = noise_pcm.length * 2;
 
@@ -27,9 +27,6 @@ void setnoise(double n_real[], double n_imag[],double n_amp[], double n_phas[],S
 			n_imag[2 * i] = 0;
 			n_imag[(2 * i) + 1] = 0;
 		}
-	FFT(n_real, n_imag,n_size);
-	getampphase(n_real, n_imag, n_amp, n_phas, n_size);
-	IFFT(n_real, n_imag, n_size);
 }
 
 void subtruction(double org_amp[], double noize_amp[], int size) {
