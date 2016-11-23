@@ -5,232 +5,496 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <string.h>
-#include "./headerfiles/initfile.h"
-#include "./headerfiles/wave.h"
-#include "./headerfiles/window_function.h"
-#include "./headerfiles/sinc.h"
-#include "./headerfiles/fir_filter.h"
-#include "./headerfiles/fft.h"
-#include "./headerfiles/countSound.h"
-#include "./headerfiles/make_datfile.h"
-#include "./headerfiles/dfr_filter.h"
+#include "initfile.h"
+#include "wave.h"
+#include "window_function.h"
+#include "sinc.h"
+#include "fir_filter.h"
+#include "iir_filter.h"
+#include "fft.h"
+#include "countSound.h"
+#include "make_datfile.h"
+#include "dfr_filter.h"
+#include "spectrum.h"
+#include "frame-time.h"
+#include "statistics.h"
 #define OUT_FILE_NUM 4
 
 int main(void)
 {
-	STEREO_PCM pcm0, bflap_pcm0, pcm1[OUT_FILE_NUM];
-	IN_FILE inputfile;
+	STEREO_PCM pcm0, cut_pcm0, noise_pcm0, pcm1[OUT_FILE_NUM];
+	IN_FILE inputfile[2];
 	OUT_FILE outputfiles[OUT_FILE_NUM];
-	int n, m, k, J, L, N,ife1,ife2,idelta, offset, frame, number_of_frame;
-	double fe1, fe2, delta,xedge_max,yedge_max[OUT_FILE_NUM / 2], tempLmax, tempRmax, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *x_lpre, *x_lpim, *y_real[OUT_FILE_NUM], *y_imag[OUT_FILE_NUM];
-	char *infilename, *outfilenames[OUT_FILE_NUM];
+	SPECTROGRAM **sp, *spel;
+	int n, m, k, Jb, N, L, offset, frame, number_of_frame, filternum;
+	int str_index, fin_index, ife1, ife2, idelta;
+	int noise_index1, noise_index2, noise_size;
+	int cflag, count, sleepframe;
+	long Ip, Jp;
+	double fe1, fe2, delta;
+	double str_time, fin_time;
+	double noise_time1, noise_time2, noiseaverage, noiseSD_t, noiseSD_f, alpha;
+	double threshold, sleeptime,s;
+	double *b_real, *b_imag, *bb, *wJb, *wN, *x_real, *x_imag, *x_lpre, *x_lpim, *y_real[OUT_FILE_NUM], *y_imag[OUT_FILE_NUM];
+	double *n_real, *n_imag, *x_amp, *x_phas, *n_amp, *n_phas;
+	double fc, Q, g, a[3], bp[3], **A, **B, *Ael, *Bel;
+	char *infilename[2], *outfilenames[OUT_FILE_NUM], *datafile;
 
 
 	//入力ファイルのデータ
-	char file[] = "short2";
+	char file[] = "short1";
 	char filetype[] = ".wav";
-	char directory[] = "./wavfiles/";
+	char directory[] = "";
 	//BPフィルタのデータ
 	ife1 = 1000;	/* エッジ周波数1 */
 	ife2 = 2000;	/* エッジ周波数2 */
-	idelta = 900;	/* 遷移帯域幅 */
-	//DFTのデータ
-	L = 256; /* フレームの長さ */
-	N = 512; /* DFTのサイズ */
+	idelta = 800;	/* 遷移帯域幅 */
+					//ピーキングフィルタのデータ
+	Ip = 2; /* 遅延器の数 */
+	Jp = 2; /* 遅延器の数 */
+	Q = 2.0; /* クオリティファクタ（一定） */
+	filternum = 1024;
+	//フレームの長さ
+	N = 1024;
+	L = 512;  //実際のデータサイズ
+			  //解析する時間区間
+	str_time = 0.0;
+	fin_time = 13.0;
+	//ノイズのデータ
+	noise_time1 = 0.0;
+	noise_time2 = 3.5;
+	alpha = 5.2;
+	//
+	cflag = 0;
+	sleeptime = 0.3;
+	s = 0.04;
+
+	printf("ファイル名：%s\n", file);
+	printf("バンドパス： %d-%d[Hz], 遷移帯域幅：%d[Hz]\n", ife1, ife2, idelta);
 
 
 	//ファイルの初期化処理
-	init_infiles(&inputfile,directory,file,filetype);
-	infilename =(char*)calloc(getinfsize(&inputfile) ,sizeof(char));
-	getinfilename(&inputfile,infilename);
-	init_outfiles(&inputfile,outputfiles,ife1,ife2,idelta);
+	init_infiles(inputfile, directory, file, filetype);
+	infilename[0] = (char*)calloc(getinfsize(&inputfile[0]), sizeof(char));
+	infilename[1] = (char*)calloc(4 + getinfsize(&inputfile[1]), sizeof(char));
+	getinfilename(inputfile, infilename);
+	init_outfiles(&inputfile[0], outputfiles, ife1, ife2, idelta);
 	for (int i = 0; i < OUT_FILE_NUM; i++) {
 		outfilenames[i] = (char*)calloc(getoutfsize(&outputfiles[i]), sizeof(char));
-		getoutfilename(&outputfiles[i],outfilenames[i]);
+		getoutfilename(&outputfiles[i], outfilenames[i]);
 	}
 
-	stereo_wave_read(&pcm0,infilename); /* WAVEファイルからステレオの音データを入力する */
+	/* WAVEファイルからステレオの音データを入力する */
+	stereo_wave_read(&pcm0, infilename[0]);
+	printf("総データ数：%d[個]\n", (pcm0.length) * 2);
 
-	spcmcpy(&bflap_pcm0,&pcm0);
-	for (int i = 0; i < OUT_FILE_NUM;i++) {
-		spcmcpy(&pcm1[i],&pcm0);
+
+	//サイズNの窓関数作成
+	wN = (double*)calloc(N, sizeof(double));
+	Hanning_window(wN, N);
+
+
+	//ノイズ設定
+	noise_index1 = getstereoindex(noise_time1, pcm0.fs);
+	noise_index2 = getstereoindex(noise_time2, pcm0.fs);
+	noise_size = noise_index2 - noise_index1;
+	printf("\n----ノイズに関するデータ----\n");
+	printf("ノイズ開始時刻：%lf, ノイズ終了時刻：%lf\n", noise_time1, noise_time2);
+	printf("ノイズ開始データ = pcm[%d], ノイズ終了データ = pcm[%d]\n", noise_index1, noise_index2);
+	setspcm(&noise_pcm0, &pcm0, noise_size / 2);
+	getpcm(&pcm0, &noise_pcm0, noise_index1, noise_index2);
+
+	n_real = (double*)calloc(2 * noise_pcm0.length, sizeof(double));
+	n_imag = (double*)calloc(2 * noise_pcm0.length, sizeof(double));
+	n_amp = (double*)calloc(2 * noise_pcm0.length, sizeof(double));
+	n_phas = (double*)calloc(2 * noise_pcm0.length, sizeof(double));
+
+	//推定ノイズの初期化
+	for (n = 0; n < noise_size; n++)
+	{
+		n_amp[n] = 0.0;
+		n_phas[n] = 0.0;
+		n_real[n] = 0.0;
+		n_imag[n] = 0.0;
 	}
+	setnoise(n_real, n_imag, n_amp, n_phas, noise_pcm0);
+	noiseaverage = 0.0;
+	noiseSD_t = getSD(n_real, noiseaverage, noise_size);
+	threshold = noiseaverage + noiseSD_t * alpha;
+	printf("平均：%lf\n", noiseaverage);
+	printf("標準偏差：%lf\n", noiseSD_t);
+	printf("閾値：%lf\n", threshold);
+
+	//解析区間の設定
+	str_index = getstereoindex(str_time, pcm0.fs);
+	fin_index = getstereoindex(fin_time, pcm0.fs);
+	printf("\n----解析データ----\n");
+	printf("開始時刻：%lf 終了時刻: %lf\n", str_time, fin_time);
+	printf("開始データ：pcm[%d], 終了データ：pcm[%d]\n", str_index, fin_index);
+	setspcm(&cut_pcm0, &pcm0, (fin_index - str_index) / 2);
+	getpcm(&pcm0, &cut_pcm0, str_index, fin_index);
+
+	/*各pcmの初期化*/
+
+	for (int i = 0; i < OUT_FILE_NUM; i++) {
+		spcmcpy(&pcm1[i], &pcm0);
+	}
+
+	/* フレームの数 */
+	number_of_frame = (pcm0.length * 2 - L / 2) / (L / 2);
+	printf("フレーム数：%d\n", number_of_frame);
 
 	//BPフィルタｂを作る
-	fe1 = (double)ife1 / (2 * pcm0.fs); /* エッジ周波数1 */
-	fe2 = (double)ife2 / (2 * pcm0.fs); /* エッジ周波数2 */
-	delta = (double)idelta / (2 * pcm0.fs); /* 遷移帯域幅 */
-	J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
-	if (J % 2 == 1)
+	fe1 = (double)ife1 / (2 * pcm0.fs);
+	fe2 = (double)ife2 / (2 * pcm0.fs);
+	delta = (double)idelta / (2 * pcm0.fs);
+	Jb = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
+	if (Jb % 2 == 1)
 	{
-		J++; /* J+1が奇数になるように調整する */
+		Jb++; /* Jb+1が奇数になるように調整する */
 	}
-	b = (double*) calloc((J + 1), sizeof(double)); /* メモリの確保 */
-	w = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
-	Hanning_window(w, (J + 1)); /* ハニング窓 */
-	FIR_BPF(fe1,fe2, J, b, w); /* FIRフィルタの設計 */
+	bb = (double*)calloc((Jb + 1), sizeof(double));
+	wJb = (double*)calloc((Jb + 1), sizeof(double));
+	Hanning_window(wJb, (Jb + 1));
+	FIR_BPF(fe1, fe2, Jb, bb, wJb);
+
+	//ピーキングフィルタを作る
+	A = (double**)calloc(N, sizeof(double*));
+	B = (double**)calloc(N, sizeof(double*));
+	Ael = (double*)calloc(N * 3, sizeof(double));
+	Bel = (double*)calloc(N * 3, sizeof(double));
+	for (k = 0; k<N; k++) {
+		A[k] = Ael + k * Ip;
+		B[k] = Bel + k * Jp;
+	}
+	for (k = 0; k < filternum; k++) {
+		fc = k / pcm0.fs; /* 中心周波数 */
+		g = -n_amp[k];
+		/*int index = getMaxindex(n_amp, N);
+		g = n_amp[index];*/
+		IIR_peaking(fc, Q, g, a, bp); /* IIRフィルタの設計 */
+		for (m = 0; m <= Ip; m++)
+		{
+			A[k][m] = a[m];
+		}
+		for (m = 0; m <= Jp; m++)
+		{
+			B[k][m] = bp[m];
+		}
+	}
 
 
-	yedge_max[0] = 0; //edgeデータの最大値
-	yedge_max[1] = 0; //edgeデータの最大値
+	sleepframe = getframe(sleeptime, L, pcm0.fs);
+	count = 0;
+	printf("\n----カウントに関するデータ----\n");
+	printf("閾値：%lf\nカウント休止時間：%lf[s]\nカウント休止フレーム数：%d\n", threshold, sleeptime, sleepframe);
 
-	number_of_frame = pcm0.length*2 / L; /* フレームの数 */
 
-	 /* メモリの確保 */
-	b_real = (double*)calloc(N, sizeof(double)); 
-	b_imag = (double*)calloc(N, sizeof(double)); 
+	/* メモリの確保 */
+	b_real = (double*)calloc(N, sizeof(double));
+	b_imag = (double*)calloc(N, sizeof(double));
 	x_real = (double*)calloc(N, sizeof(double));
 	x_imag = (double*)calloc(N, sizeof(double));
 	x_lpre = (double*)calloc(N, sizeof(double));
 	x_lpim = (double*)calloc(N, sizeof(double));
+	x_amp = (double*)calloc(N, sizeof(double));
+	x_phas = (double*)calloc(N, sizeof(double));
+	/*出力フレームの初期化*/
 	for (int i = 0; i < OUT_FILE_NUM; i++)
 	{
 		y_real[i] = (double*)calloc(N, sizeof(double));
 		y_imag[i] = (double*)calloc(N, sizeof(double));
 	}
 
-	/*エッジ強調処理*/
-	laplacian(pcm0.sL, bflap_pcm0.sL, bflap_pcm0.length);
-	laplacian(pcm0.sR, bflap_pcm0.sR, bflap_pcm0.length);
-	//tempLmax = getMax(bflap_pcm0.sL, bflap_pcm0.length);
-	//tempRmax = getMax(bflap_pcm0.sR, bflap_pcm0.length);
-	tempLmax = getbeforeMax(bflap_pcm0.sL, bflap_pcm0.length);
-	tempRmax = getbeforeMax(bflap_pcm0.sR, bflap_pcm0.length);
-	if (tempLmax < tempRmax) {
-		xedge_max = tempRmax;
-	}
-	else {
-		xedge_max = tempLmax;
-	}
-
-	//音圧レベルの正規化、スペクトルはなまって見える
-	normalize_array(bflap_pcm0.sL, bflap_pcm0.length, xedge_max);
-	normalize_array(bflap_pcm0.sR, bflap_pcm0.length, xedge_max);
+	////データファイルの作成
+	//datafile = (char*)calloc(10,sizeof(char));
+	//strcpy(datafile,file);
+	//strcat(datafile,".dat");
+	//make_datfile(datafile);
+	//sp = (SPECTROGRAM**)calloc(number_of_frame, sizeof(SPECTROGRAM*));
+	//spel = (SPECTROGRAM*)calloc(N * number_of_frame, sizeof(SPECTROGRAM));
+	//for (frame = 0; frame < number_of_frame; frame++) {
+	//	sp[frame] = spel + frame * N;
+	//}
 
 
+	printf("\n----解析開始----\n");
 	//フレーム単位の周波数領域での処理
+	int maxindex, minindex, index, secondindex, bflag;
+	double max, min, data, dy,counttime;
+	bflag = 0;	counttime = 0.0;
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
-		offset = L * frame;
+		//printf("---------------%dフレーム---------------------\n",frame);
+		offset = (L / 2) * frame;
 
-		/* x(n)のFFT */
+		/*データを0で初期化*/
 		for (n = 0; n < N; n++)
 		{
 			x_real[n] = 0.0;
 			x_imag[n] = 0.0;
 			x_lpre[n] = 0.0;
 			x_lpim[n] = 0.0;
-			for (int i = 0; i < OUT_FILE_NUM;i++) {
+			b_real[n] = 0.0;
+			b_imag[n] = 0.0;
+			for (int i = 0; i < OUT_FILE_NUM; i++) {
 				y_real[i][n] = 0;
 				y_imag[i][n] = 0;
 			}
 		}
-		for (n = 0; n < L/2; n++)
+
+		//データ入力
+		for (n = 0; n < L / 2; n++)
 		{
-			x_real[2 * n] = pcm0.sL[(offset/2) + n];
+			x_real[2 * n] = pcm0.sL[(offset / 2) + n];
 			x_real[(2 * n) + 1] = pcm0.sR[(offset / 2) + n];
-			x_lpre[2 * n] = bflap_pcm0.sL[(offset / 2) + n];
-			x_lpre[(2 * n) + 1] = bflap_pcm0.sR[(offset / 2) + n];
 		}
 
-		/*エッジ強調処理*/
-		//laplacian(x_real, x_edge, N);
+		for (m = 0; m <= Jb; m++)
+		{
+			b_real[m] = bb[m];
+		}
 
+		/*前・エッジ強調処理*/
+		laplacian(x_real, x_lpre, N);
+
+		for (int i = 0; i < N; i++) {//窓関数をかける
+			x_real[i] *= wN[i];
+			x_lpre[i] *= wN[i];
+		}
 		FFT(x_real, x_imag, N);
 		FFT(x_lpre, x_lpim, N);
 
-		/* b(m)のFFT */
-		for (m = 0; m < N; m++)
+		///*スペクトルサブトラクション(仮！！)*/
+		//for (int k = 0; k < L; k++) {//初期化
+		//	x_amp[k] = 0.0;
+		//	x_phas[k] = 0.0;
+		//}
+		//getampphase(x_real, x_imag, x_amp, x_phas, N);
+		//subtruction(x_amp, n_amp, N);
+		//getrealimage(x_real, x_imag, x_amp, x_phas, N);
+		//for (int k = 0; k < L; k++) {//初期化
+		//	x_amp[k] = 0.0;
+		//	x_phas[k] = 0.0;
+		//}
+		//getampphase(x_lpre, x_lpim, x_amp, x_phas, N);
+		//subtruction(x_amp, n_amp, N);
+		//getrealimage(x_lpre, x_lpim, x_amp, x_phas, N);
+		///*for (int k = 0; k < L; k++) {
+		//x_real[k] *= wN[k];
+		//x_imag[k] *= wN[k];
+		//}*/
+
+		//データをセーブ
+		for (n = 0; n < N; n++)
 		{
-			b_real[m] = 0.0;
-			b_imag[m] = 0.0;
+			for (int i = 0; i < OUT_FILE_NUM; i++) {
+				y_real[i][n] = x_real[n];
+				y_imag[i][n] = x_imag[n];
+			}
 		}
-		for (m = 0; m <= J; m++)
-		{
-			b_real[m] = b[m];
-		}
+
+		/*    BPF 実行
 		FFT(b_real, b_imag, N);
+		for (n = 0; n < N; n++) {
+		y_real[0][n] = x_real[n] * b_real[n] - x_imag[n] * b_imag[n];
+		y_imag[0][n] = x_imag[n] * b_real[n] + x_real[n] * b_imag[n];
 
-		/* フィルタリング */
-		for (k = 0; k < N; k++)
-		{
-			y_real[0][k] = x_real[k] * b_real[k] - x_imag[k] * b_imag[k];
-			y_imag[0][k] = x_imag[k] * b_real[k] + x_real[k] * b_imag[k];
-			y_real[2][k] = x_lpre[k] * b_real[k] - x_lpim[k] * b_imag[k];
-			y_imag[2][k] = x_lpim[k] * b_real[k] + x_lpre[k] * b_imag[k];
+		y_real[2][n] = x_lpre[n] * b_real[n] - x_lpim[n] * b_imag[n];
+		y_imag[2][n] = x_lpim[n] * b_real[n] + x_lpre[n] * b_imag[n];
+		}
+		*/
+
+
+		for (int i = 0; i < OUT_FILE_NUM; i++) {
+			IFFT(y_real[i], y_imag[i], N);
 		}
 
-		IFFT(y_real[0], y_imag[0], N);
-		IFFT(y_real[2], y_imag[2], N);
-
-		/*エッジ強調処理*/
-		//laplacian(y_real, y_edge, N);
-
-		/* フィルタリング結果の連結 */
-		for (n = 0; n < L * 2/2; n++)
+		//データを更新
+		for (n = 0; n < N; n++)
 		{
-			if ((offset/2) + n < pcm0.length)
-			{	
-				pcm1[0].sL[(offset / 2) + n] += y_real[0][2 * n];
-				pcm1[0].sR[(offset / 2) + n] += y_real[0][(2 * n) + 1];
+			x_real[n] = y_real[0][n];
+			//x_imag[n] = y_imag[0][n];
+			x_lpre[n] = y_real[2][n];
+			//x_lpim[n] = y_imag[2][n];
+		}
 
-				pcm1[2].sL[(offset/2) + n] += y_real[2][2 * n];			
-				pcm1[2].sR[(offset/2) + n] += y_real[2][(2 * n)+1];
+		////イコライザ
+		//for (k = 0; k < filternum; k++)	{
+		//	for (n = 0; n < N; n++){
+		//		y_real[0][n] = 0.0;
+		//	}
+		//	for (n = 0; n < N; n++){
+		//		for (m = 0; m <= Jp; m++){
+		//			if (n - m >= 0){
+		//				y_real[0][n] += B[k][m] * x_real[n - m];
+		//			}
+		//		}
+		//		for (m = 1; m <= Ip; m++)
+		//		{
+		//			if (n - m >= 0)
+		//			{
+		//				y_real[0][n] += -A[k][m] * x_real[n - m];
+		//			}
+		//		}
+		//	}
+		//}
+
+		//データを更新
+		for (n = 0; n < N; n++)
+		{
+			x_real[n] = y_real[0][n];
+			//x_imag[n] = y_imag[0][n];
+			x_lpre[n] = y_real[2][n];
+			//x_lpim[n] = y_imag[2][n];
+		}
+
+
+		/*後・エッジ強調処理*/
+		laplacian(y_real[0], y_real[1], N);
+		laplacian(y_real[2], y_real[3], N);
+
+		//音のカウント
+		if (bflag == 1) {
+			secondindex = getMaxindex(y_real[0],N);
+			dy = delta - y_real[0][secondindex];
+			if (dy > 0.15) {
+				double temptime;
+				count++; 
+				temptime = getsecond(frame, L, pcm0.fs);
+				if (sleeptime > (temptime - counttime)) {
+					sleeptime -= (temptime - counttime) * s;
+				}
+				else if (sleeptime < (temptime - counttime)) {
+					sleeptime += (temptime - counttime) * s;
+				}
+				counttime = temptime;
+				sleepframe = getframe(sleeptime,L,pcm0.fs);
+				printf("count = %d, frame = %d, time = %lf\n", count, frame, counttime);
+				printf("カウント休止時間：%lf[s]\nカウント休止フレーム数：%d\n", sleeptime, sleepframe);
+				printf("max:sound[%d] = %lf, min:sound[%d] = %lf\n\n", maxindex, max, minindex, min);
+				cflag = sleepframe;
+
+			}
+			bflag = 0;
+		}
+		if (cflag == 0) {
+
+			
+
+			max = -1.0;
+			min = 1.0;
+			for (int i = 0; i < N; i++) {
+				data = y_real[0][i];
+				if (max < data) {
+					max = data;
+					maxindex = i;
+				}
+				if (min > data) {
+					min = data;
+					minindex = i;
+				}
+			}
+			//delta = max - min;
+			if (max > -min) {
+				delta = max;
+				index = maxindex;
+			}
+			else {
+				delta = min;
+				index = minindex;
+			}
+
+			if ((delta > threshold)) {
+				//printf("%d：閾値を超えました\n", frame);
+				bflag = 1;
+			}
+		}
+		else
+		{
+			cflag--;
+		}
+
+		////.datファイル作成
+		//double time = getsecond(frame,L,pcm0.fs);
+		//double finterval = (pcm0.fs / N);
+		//double db;
+		//for (n = 0; n < N; n++) {
+		//	sp[frame][n].time = time;
+		//	sp[frame][n].freequency = (int)(finterval * n);
+		//	//printf("x_amp[%d] = %lf\n",n,x_amp[n]);
+		//	sp[frame][n].power =x_amp[n];
+		//}
+		//postscript_datfile(datafile, sp[frame], N);
+
+		/* フレームの連結 */
+		for (n = 0; n < N / 2; n++)
+		{
+			if ((offset / 2) + n < pcm0.length)
+			{
+				for (int i = 0; i < OUT_FILE_NUM; i++)
+				{
+					pcm1[i].sL[(offset / 2) + n] += y_real[i][2 * n];
+					pcm1[i].sR[(offset / 2) + n] += y_real[i][(2 * n) + 1];
+
+				}
+
+				pcm1[2].sL[(offset / 2) + n] += y_real[2][2 * n];
+				pcm1[2].sR[(offset / 2) + n] += y_real[2][(2 * n) + 1];
 			}
 		}
 	}
 
-	/*エッジ強調処理*/
-	laplacian(pcm1[0].sL, pcm1[1].sL, pcm1[1].length);
-	laplacian(pcm1[0].sR, pcm1[1].sR, pcm1[1].length);
-	laplacian(pcm1[2].sL, pcm1[3].sL, pcm1[3].length);
-	laplacian(pcm1[2].sR, pcm1[3].sR, pcm1[3].length);
-	
-	//音圧レベルの正規化、スペクトルはなまって見える
-	for (int i = 0; i < OUT_FILE_NUM / 2;i++) {
-		tempLmax = getMax(pcm1[2*i +1].sL, pcm1[2*i +1].length);
-		tempRmax = getMax(pcm1[2*i +1].sR, pcm1[2*i +1].length);
-		if (tempLmax < tempRmax) {
-			yedge_max[i] = tempRmax;
-		}else{
-			yedge_max[i] = tempLmax;
-		}
-	//normalize_array(pcm1[2 * i + 1].sL, pcm1[2 * i + 1].length, yedge_max[i]);
-	//normalize_array(pcm1[2 * i + 1].sR, pcm1[2 * i + 1].length, yedge_max[i]);
-	}
+	printf("解析時間： %lf\n", getsecond(number_of_frame, L, pcm0.fs));
+	printf("総カウント数： %d\n", count);
 
-	for (int i = 0; i < OUT_FILE_NUM;i++) {
-	stereo_wave_write(&pcm1[i], outfilenames[i]); /* WAVEファイルにモノラルの音データを出力する */
-	}
-	
+	printf("----解析終了----\n");
 
-	 /* メモリの解放 */
-	free(infilename);
-	free(pcm0.sL);
-	free(pcm0.sR);
-	free(bflap_pcm0.sL);
-	free(bflap_pcm0.sR);
-	free(b); 
-	free(w);
-	free(b_real);
-	free(b_imag);
-	free(x_real);
-	free(x_imag);
-	free(x_lpre);
+
+	/* WAVEファイルにモノラルの音データを出力する */
+	for (int i = 0; i < OUT_FILE_NUM; i++) {
+		stereo_wave_write(&pcm1[i], outfilenames[i]);
+	}
+	stereo_wave_write(&cut_pcm0, infilename[1]);
+
+	/* メモリの解放 */
+	//free(spel);
+	//free(sp);
+	free(x_phas);
+	free(x_amp);
 	free(x_lpim);
-	for (int i = 0; i < OUT_FILE_NUM; i++)
+	free(x_lpre);
+	free(x_imag);
+	free(x_real);
+	free(b_imag);
+	free(b_real);
+	free(Bel);
+	free(Ael);
+	free(B);
+	free(A);
+	free(wJb);
+	free(bb);
+	free(n_phas);
+	free(n_amp);
+	free(n_imag);
+	free(n_real);
+	free(wN);
+	for (int i = OUT_FILE_NUM - 1; i >= 0; i--)
 	{
-	free(outfilenames[i]);
-	free(pcm1[i].sL); 
-	free(pcm1[i].sR);
-	free(y_real[i]);
-	free(y_imag[i]);
+		free(outfilenames[i]);
+		free(pcm1[i].sL);
+		free(pcm1[i].sR);
+		free(y_real[i]);
+		free(y_imag[i]);
 	}
+	free(infilename[1]);
+	free(infilename[0]);
+	free(pcm0.sR);
+	free(pcm0.sL);
+	free(cut_pcm0.sR);
+	free(cut_pcm0.sL);
 
-
-	//printf("counts =%d\n count = %d\n",counts,count);
-	//printf("max = %lf\n ",max);
-	printf("finish");
+	printf("finish\n");
 
 	return 0;
 }
