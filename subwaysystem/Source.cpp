@@ -34,7 +34,7 @@ int main(void)
 
 
 	//入力ファイルのデータ
-	char orgfile[] = "short1";
+	char orgfile[] = "short3";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
 	//フレームの長さ
@@ -42,7 +42,7 @@ int main(void)
 	L = 512;  //実際のデータサイズ
 	//ノイズのデータ
 	noise_time1 = 0.0;
-	noise_time2 = 7.0;
+	noise_time2 = 5.0;
 	sleeptime = 0.3;
 	judgedy = 0.08;
 	alpha = 4.9;
@@ -214,6 +214,9 @@ int main(void)
 	stereo_wave_write(&out_pcm, outfilename);
 	printf("ファイルを出力しました\n");
 	printf("ファイル名：%s\n", outfilename);
+
+	makesounddata(outputfile.filename,out_pcm);
+	
 
 	/* メモリの解放 */
 	free(x_imag);

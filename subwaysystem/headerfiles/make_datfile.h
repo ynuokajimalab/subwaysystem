@@ -44,6 +44,38 @@ void makehistgram(char *filename,double histgram[],double dn, int histgramsize) 
 
 }
 
+void makesounddata(char *orgfile,STEREO_PCM pcm) {
+
+	FILE *fpL,*fpR;
+	char *Lfilename,*Rfilename;
+	Lfilename = (char*)calloc(20, sizeof(char));
+	Rfilename = (char*)calloc(20, sizeof(char));
+	strcpy(Lfilename, orgfile);
+	strcpy(Rfilename, orgfile); 
+	strcat(Lfilename, "_L");
+	strcat(Rfilename, "_R");
+	strcat(Lfilename, ".dat");
+	strcat(Rfilename, ".dat");
+
+	fpL = fopen(Lfilename, "w");
+	fpR = fopen(Rfilename, "w");
+
+	for (int i = 0; i < pcm.length; i++) {
+		fprintf(fpL, "%lf %lf\n", (double)((double)i / pcm.fs), pcm.sL[i]);
+		fprintf(fpR, "%lf %lf\n", (double)((double)i / pcm.fs), pcm.sR[i]);
+
+	}
+	printf("ファイルを出力しました\n");
+	printf("ファイル名：%s\n", Lfilename);
+	printf("ファイル名：%s\n", Rfilename);
+
+
+	fclose(fpR);
+	fclose(fpL);
+	free(Rfilename);
+	free(Lfilename);
+
+}
 
 
 //inputfile のデータ数をcompressionrateだけ圧縮
