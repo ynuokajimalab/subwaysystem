@@ -34,7 +34,7 @@ int main(void)
 
 
 	//入力ファイルのデータ
-	char orgfile[] = "short3";
+	char orgfile[] = "short1";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
 	//フレームの長さ
@@ -44,7 +44,7 @@ int main(void)
 	noise_time1 = 0.0;
 	noise_time2 = 7.0;
 	sleeptime = 0.3;
-	judgedy = 0.04;
+	judgedy = 0.08;
 	alpha = 4.9;
 	s = 0.02;
 
@@ -69,9 +69,6 @@ int main(void)
 	/* WAVEファイルからステレオの音データを入力する */
 	stereo_wave_read(&org_pcm, infilename);
 	printf("ファイルを読み込みました\n");
-	/*for (n = 0; n < org_pcm.length; n++) {
-		printf("org_pcm.sL[%d] = %lf\n", n, org_pcm.sL[n]);
-	}*/
 	printf("ファイル名：%s\n", infilename);
 	printf("総データ数：%d[個]\n", (org_pcm.length) * 2);
 
@@ -85,9 +82,6 @@ int main(void)
 	printf("ノイズ開始データ = pcm[%d], ノイズ終了データ = pcm[%d]\n", noise_index1, noise_index2);
 	setspcm(&noise_pcm, &org_pcm, noise_size / 2);
 	getpcm(&org_pcm, &noise_pcm, noise_index1, noise_index2);
-	/*for (n = 0; n < noise_size/2; n++) {
-		printf("noise_pcm.sL[%d] = %lf\n", n, noise_pcm.sL[n]);
-	}*/
 
 	n_real = (double*)calloc(noise_size, sizeof(double));
 	n_imag = (double*)calloc(noise_size, sizeof(double));
@@ -98,10 +92,6 @@ int main(void)
 		n_real[n] = 0.0;
 		n_imag[n] = 0.0;
 	}
-	setnoise(n_real, n_imag,noise_pcm);
-	/*for (n = 0; n < noise_size;n++) {
-		printf("n_real[%d] = %lf\n",n,n_real[n]);
-	}*/
 	noiseSD_t = getSD(n_real, 0.0, noise_size);
 	threshold = noiseSD_t * alpha;
 	printf("平均：%lf\n", 0.0);
@@ -214,7 +204,7 @@ int main(void)
 			}
 		}
 	}
-
+	printf("総カウント数： %d\n",count);
 	printf("解析時間： %lf\n", getsecond(number_of_frame, L, org_pcm.fs));
 	printf("----解析終了----\n");
 
