@@ -157,6 +157,10 @@
     <ClInclude Include="headerfiles\sinc.h" />
     <ClInclude Include="headerfiles\wave.h" />
     <ClInclude Include="headerfiles\window_function.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="subwaysystem.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
