@@ -29,12 +29,12 @@ int main(void)
 	int maxindex, minindex, representive_index,secondindex, bflag, cflag, count, sleepframe;
 	double *x_real, *x_imag, *y_real,*y_imag;
 	double noise_time1, noise_time2, noiseSD_t,alpha, *n_real, *n_imag;
-	double threshold, sleeptime, max, min, data, dy,judgedy, counttime, s,temptime,representive_value;
+	double threshold, sleeptime, max, min, data, dy,judgedy, counttime, s,t,temptime,representive_value;
 	char *infilename, *outfilename;
 
 
 	//入力ファイルのデータ
-	char orgfile[] = "short1";
+	char orgfile[] = "short2";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
 	//フレームの長さ
@@ -42,11 +42,12 @@ int main(void)
 	L = 512;  //実際のデータサイズ
 	//ノイズのデータ
 	noise_time1 = 0.0;
-	noise_time2 = 7.0;
-	sleeptime = 0.3;
-	judgedy = 0.08;
-	alpha = 4.9;
-	s = 0.02;
+	noise_time2 = 12.72;
+	sleeptime = 0.5;
+	judgedy = 0.0;
+	alpha = 4.4;
+	s = 0.06;
+	t = 2.0/3.0;
 
 
 	//データの初期化
@@ -92,6 +93,7 @@ int main(void)
 		n_real[n] = 0.0;
 		n_imag[n] = 0.0;
 	}
+	setnoise(n_real, n_imag, noise_pcm);
 	noiseSD_t = getSD(n_real, 0.0, noise_size);
 	threshold = noiseSD_t * alpha;
 	printf("平均：%lf\n", 0.0);
@@ -144,7 +146,7 @@ int main(void)
 
 	
 		//音のカウント
-		if (bflag == 1) {
+		/*if (bflag == 1) {
 			secondindex = getMaxindex(y_real, N);
 			dy = representive_value - y_real[secondindex];
 			if (dy > judgedy) {
@@ -164,7 +166,7 @@ int main(void)
 
 			}
 			bflag = 0;
-		}
+		}*/
 		if (cflag == 0) {
 			max = -1.0;
 			min = 1.0;
@@ -187,8 +189,21 @@ int main(void)
 				representive_index = minindex;
 			}
 			if (representive_value > threshold) {
-				printf("over:%lf[s]\n",getsecond(frame,L,org_pcm.fs));
-				bflag = 1;
+				//printf("over:%lf[s]\n",getsecond(frame,L,org_pcm.fs));
+				count++;
+				temptime = getsecond(frame, L, org_pcm.fs);
+				if (sleeptime > (temptime - counttime)*t) {
+					sleeptime -= (temptime - counttime) * s;
+				}
+				else if (sleeptime < (temptime - counttime)*t) {
+					sleeptime += (temptime - counttime) * s;
+				}
+				counttime = temptime;
+				sleepframe = getframe(sleeptime, L, org_pcm.fs);
+				printf("frame = %d, time = %lf, count = %d\n", frame - 1, counttime, count);
+				printf("カウント休止時間：%lf[s]\nカウント休止フレーム数：%d\n", sleeptime, sleepframe);
+				cflag = sleepframe;
+				//bflag = 1;
 			}
 		}else{
 			cflag--;
