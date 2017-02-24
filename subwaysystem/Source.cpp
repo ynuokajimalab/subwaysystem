@@ -16,7 +16,7 @@ int main(void)
 	int i, j, n, m, k, J, L, N, offset, frame, number_of_frame, number_fe1, number_fe2, count;
 	double fe1, fe2, delta, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum;
 
-	mono_wave_read(&pcm0, "ktsyk_snyk.wav"); /* WAVEファイルからモノラルの音データを入力する */
+	mono_wave_read(&pcm0, "minami_nakam.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
 	pcm1.fs = pcm0.fs; /* 標本化周波数 */
 	pcm1.bits = pcm0.bits; /* 量子化精度 */
@@ -27,23 +27,25 @@ int main(void)
 	fe2 = 2000.0 / pcm0.fs; /* エッジ周波数 */
 	delta = 500.0 / pcm0.fs; /* 遷移帯域幅 */
 
-	J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
-	if (J % 2 == 1)
-	{
-		J++; /* J+1が奇数になるように調整する */
-	}
+	//J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
+	//if (J % 2 == 1)
+	//{
+	//	J++; /* J+1が奇数になるように調整する */
+	//}
 
-	b = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
-	w = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
+	N = 512; /* DFTのサイズ */
 
-	Hanning_window(w, (J + 1)); /* ハニング窓 */
+	b = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
+	w = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
+
+	Hanning_window(w, N); /* ハニング窓 */
 
 	//FIR_BPF(fe1,fe2, J, b, w); /* FIRフィルタの設計 */
 
-	L = 256; /* フレームの長さ */
-	N = 512; /* DFTのサイズ */
+	//L = 256; /* フレームの長さ */
+	
 
-	number_of_frame = pcm0.length / L; /* フレームの数 */
+	number_of_frame = pcm0.length / N; /* フレームの数 */
 
 	w_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 	w_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
@@ -58,7 +60,7 @@ int main(void)
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
-		offset = L * frame;
+		offset = N * frame;
 
 			/* x(n)のFFT */
 			for (n = 0; n < N; n++)
@@ -66,7 +68,7 @@ int main(void)
 				x_real[n] = 0.0;
 				x_imag[n] = 0.0;
 			}
-			for (n = 0; n < L; n++)
+			for (n = 0; n < N; n++)
 			{
 				x_real[n] = pcm0.s[offset + n];
 			}
@@ -77,7 +79,7 @@ int main(void)
 				w_real[m] = 0.0;
 				w_imag[m] = 0.0;
 			}
-			for (m = 0; m <= J; m++)
+			for (m = 0; m < N; m++)
 			{
 				w_real[m] = w[m];
 			}
@@ -125,7 +127,7 @@ int main(void)
 				}
 			}
 
-			threshold = 16.0; /* しきい値 */
+			threshold = 40.0; /* しきい値 */
 
 			if (max > threshold)
 			{
