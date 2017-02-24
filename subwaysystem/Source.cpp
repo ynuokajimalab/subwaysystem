@@ -14,7 +14,8 @@ int main(void)
 {
 	MONO_PCM pcm0, pcm1;
 	int i, j, n, m, k, L, offset, frame, number_of_frame, number_fe1, number_fe2, count;
-	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum;
+	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, max_top, threshold, temp, sum, max_top;
+	double noise_time1, noise_time2, frame_noise1, frame_noise2;
 
 	mono_wave_read(&pcm0, "minami_nakam.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
@@ -46,6 +47,62 @@ int main(void)
 	count = 0; /* カウントされた回数 */
 	number_fe1 = (int)floor(L * fe1 / 2);
 	number_fe2 = (int)floor(L * fe2 / 2);
+
+	noise_time1 = 0.0;
+	noise_time2 = 8.0;
+	frame_noise1 = floor(noise_time1 * pcm0.fs / L);
+	frame_noise2 = floor(noise_time2 * pcm0.fs / L);
+
+	for (frame = frame_noise1; frame < frame_noise2 + 1; frame++)
+	{
+		offset = L * frame;
+
+		/* x(n)のFFT */
+		for (n = 0; n < L; n++)
+		{
+			x_real[n] = 0.0;
+			x_imag[n] = 0.0;
+		}
+		for (n = 0; n < L; n++)
+		{
+			x_real[n] = pcm0.s[offset + n];
+		}
+
+		/* w(m)のFFT */
+		for (m = 0; m < L; m++)
+		{
+			w_real[m] = 0.0;
+			w_imag[m] = 0.0;
+		}
+		for (m = 0; m < L; m++)
+		{
+			w_real[m] = w[m];
+		}
+		/*FFT(b_real, b_imag, N);*/
+
+		/* 掛け合わせ */
+		for (k = 0; k < L; k++)
+		{
+			y_real[k] = x_real[k] * w_real[k];
+			y_imag[k] = x_imag[k] * w_imag[k];
+		}
+		FFT(y_real, y_imag, L);
+
+		/* 上位半分の合計を利用した判定 */
+
+		max = y_real[number_fe1];
+
+		for (j = number_fe1; j < number_fe2 + 1; j++)
+		{
+			if (y_real[j] >max)
+			{
+				max = y_real[j];
+			}
+		}
+		max_top = max;
+
+	}
+
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -94,7 +151,6 @@ int main(void)
 				}
 			}
 
-			threshold = 35.0; /* しきい値 */
 			sum = 0; /* 初期化 */
 
 			for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
