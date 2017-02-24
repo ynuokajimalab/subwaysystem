@@ -13,10 +13,10 @@
 int main(void)
 {
 	MONO_PCM pcm0, pcm1;
-	int i, n, m, k, J, L, N, offset, frame, number_of_frame, number_fe1, number_fe2, count;
-	double fe1, fe2, delta, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold;
+	int i, j, n, m, k, J, L, N, offset, frame, number_of_frame, number_fe1, number_fe2, count;
+	double fe1, fe2, delta, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum;
 
-	mono_wave_read(&pcm0, "short1.WAV"); /* WAVEファイルからモノラルの音データを入力する */
+	mono_wave_read(&pcm0, "ktsyk_snyk.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
 	pcm1.fs = pcm0.fs; /* 標本化周波数 */
 	pcm1.bits = pcm0.bits; /* 量子化精度 */
@@ -53,8 +53,8 @@ int main(void)
 	y_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
 
 	count = 0; /* カウントされた回数 */
-	number_fe1 = floor(N * fe1 / (pcm0.fs / 2));
-	number_fe2 = floor(N * fe2 / (pcm0.fs / 2));
+	number_fe1 = floor(N * fe1 / 2);
+	number_fe2 = floor(N * fe2 / 2);
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -86,11 +86,36 @@ int main(void)
 			/* 掛け合わせ */
 			for (k = 0; k < N; k++)
 			{
-				y_real[i] = x_real[k] * w_real[k];
-				y_imag[i] = x_imag[k] * w_imag[k];
+				y_real[k] = x_real[k] * w_real[k];
+				y_imag[k] = x_imag[k] * w_imag[k];
 			}
 			FFT(y_real, y_imag, N);
 
+			/* 上位半分の合計を利用した判定 */
+			//for (j = number_fe1; j < number_fe2 + 1; j++)
+			//{
+			//	if (y_real[j] > y_real[j + 1])
+			//	{
+			//		temp = y_real[j];
+			//		y_real[j] = y_real[j + 1];
+			//		y_real[j + 1] = temp;
+			//	}
+			//}
+
+			//threshold = 2.9; /* しきい値 */
+			//sum = 0; /* 初期化 */
+
+			//for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
+			//{
+			//	sum += y_real[i];
+			//}
+			//if (sum > threshold)
+			//{
+			//	count++;
+			//	printf("frame:%d\n", frame);
+			//}
+
+			/* 最大値を利用した判定 */
 			max = y_real[number_fe1];
 			for (i = number_fe1; i < number_fe2 + 1; i++)
 			{
@@ -100,11 +125,12 @@ int main(void)
 				}
 			}
 
-			threshold = 5.0; /* しきい値 */
+			threshold = 16.0; /* しきい値 */
 
 			if (max > threshold)
 			{
 				count++;
+				printf("frame:%d\n", frame);
 			}
 
 		//		/* フィルタリング結果の連結 */
@@ -119,7 +145,7 @@ int main(void)
 	}
 	printf("回数は%d回です\n", count);
 
-	mono_wave_write(&pcm1, "short1_out.WAV"); /* WAVEファイルにモノラルの音データを出力する */
+	//mono_wave_write(&pcm1, "short1_out.WAV"); /* WAVEファイルにモノラルの音データを出力する */
 
 	free(pcm0.s); /* メモリの解放 */
 	free(pcm1.s); /* メモリの解放 */
