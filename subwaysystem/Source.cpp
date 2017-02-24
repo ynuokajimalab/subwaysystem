@@ -14,10 +14,10 @@ int main(void)
 {
 	MONO_PCM pcm0, pcm1;
 	int i, j, n, m, k, L, offset, frame, number_of_frame, number_fe1, number_fe2, count;
-	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, max_top, threshold, temp, sum, max_top;
+	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, sum_all, threshold, temp, sum, sum_average, alpha;
 	double noise_time1, noise_time2, frame_noise1, frame_noise2;
 
-	mono_wave_read(&pcm0, "minami_nakam.wav"); /* WAVEファイルからモノラルの音データを入力する */
+	mono_wave_read(&pcm0, "ktsyk_snyk.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
 	pcm1.fs = pcm0.fs; /* 標本化周波数 */
 	pcm1.bits = pcm0.bits; /* 量子化精度 */
@@ -50,8 +50,9 @@ int main(void)
 
 	noise_time1 = 0.0;
 	noise_time2 = 8.0;
-	frame_noise1 = floor(noise_time1 * pcm0.fs / L);
-	frame_noise2 = floor(noise_time2 * pcm0.fs / L);
+	frame_noise1 = floor(noise_time1 * pcm0.fs / L * 2);
+	frame_noise2 = floor(noise_time2 * pcm0.fs / L * 2);
+	sum_all = 0.0;
 
 	for (frame = frame_noise1; frame < frame_noise2 + 1; frame++)
 	{
@@ -89,25 +90,33 @@ int main(void)
 		FFT(y_real, y_imag, L);
 
 		/* 上位半分の合計を利用した判定 */
-
-		max = y_real[number_fe1];
-
 		for (j = number_fe1; j < number_fe2 + 1; j++)
 		{
-			if (y_real[j] >max)
+			if (y_real[j] < y_real[j + 1])
 			{
-				max = y_real[j];
+				temp = y_real[j];
+				y_real[j] = y_real[j + 1];
+				y_real[j + 1] = temp;
 			}
 		}
-		max_top = max;
 
+		sum = 0; /* 初期化 */
+
+		for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
+		{
+			sum += y_real[i];
+		}
+
+		IFFT(y_real, y_imag, L);
 	}
-
+	alpha = 800.0;
+	sum_all += sum;
+	sum_average = sum_all / (frame_noise2 - frame_noise1 + 1);
+	threshold = sum_average * alpha;
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
 		offset = L * frame;
-		printf("time:%f\n", ((double)offset*2 / (double)pcm0.fs));
 
 			/* x(n)のFFT */
 			for (n = 0; n < L; n++)
@@ -160,7 +169,7 @@ int main(void)
 			if (sum > threshold)
 			{
 				count++;
-				printf("time:%f\n", ((double)offset/(double)pcm0.fs));
+				printf("time:%f\n", ((double)offset*2/(double)pcm0.fs));
 			}
 
 			///* 最大値を利用した判定 */
