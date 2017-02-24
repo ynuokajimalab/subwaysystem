@@ -13,8 +13,8 @@
 int main(void)
 {
 	MONO_PCM pcm0, pcm1;
-	int i, j, n, m, k, J, L, N, offset, frame, number_of_frame, number_fe1, number_fe2, count;
-	double fe1, fe2, delta, *b, *w, *b_real, *b_imag, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum;
+	int i, n, m, k, L, offset, frame, number_of_frame, number_fe1, number_fe2, count;
+	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold;
 
 	mono_wave_read(&pcm0, "ktsyk_snyk.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
@@ -25,43 +25,32 @@ int main(void)
 
 	fe1 = 1500.0 / pcm0.fs; /* エッジ周波数 */
 	fe2 = 2000.0 / pcm0.fs; /* エッジ周波数 */
-	delta = 500.0 / pcm0.fs; /* 遷移帯域幅 */
+	L = 512; /* フレームの長さ */
 
-	J = (int)(3.1 / delta + 0.5) - 1; /* 遅延器の数 */
-	if (J % 2 == 1)
-	{
-		J++; /* J+1が奇数になるように調整する */
-	}
+	w = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
 
-	b = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
-	w = (double*)calloc((J + 1), sizeof(double)); /* メモリの確保 */
+	Hanning_window(w, L); /* ハニング窓 */
 
-	Hanning_window(w, (J + 1)); /* ハニング窓 */
-
-	//FIR_BPF(fe1,fe2, J, b, w); /* FIRフィルタの設計 */
-
-	L = 256; /* フレームの長さ */
-	N = 512; /* DFTのサイズ */
 
 	number_of_frame = pcm0.length / L; /* フレームの数 */
 
-	w_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
-	w_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
-	x_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
-	x_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
-	y_real = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
-	y_imag = (double*)calloc(N, sizeof(double)); /* メモリの確保 */
+	w_real = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	w_imag = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	x_real = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	x_imag = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	y_real = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	y_imag = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
 
 	count = 0; /* カウントされた回数 */
-	number_fe1 = floor(N * fe1 / 2);
-	number_fe2 = floor(N * fe2 / 2);
+	number_fe1 = (int)floor(L * fe1 / 2);
+	number_fe2 = (int)floor(L * fe2 / 2);
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
 		offset = L * frame;
 
 			/* x(n)のFFT */
-			for (n = 0; n < N; n++)
+			for (n = 0; n < L; n++)
 			{
 				x_real[n] = 0.0;
 				x_imag[n] = 0.0;
@@ -72,24 +61,24 @@ int main(void)
 			}
 			
 			/* w(m)のFFT */
-			for (m = 0; m < N; m++)
+			for (m = 0; m < L; m++)
 			{
 				w_real[m] = 0.0;
 				w_imag[m] = 0.0;
 			}
-			for (m = 0; m <= J; m++)
+			for (m = 0; m < L; m++)
 			{
 				w_real[m] = w[m];
 			}
 			/*FFT(b_real, b_imag, N);*/
 
 			/* 掛け合わせ */
-			for (k = 0; k < N; k++)
+			for (k = 0; k < L; k++)
 			{
 				y_real[k] = x_real[k] * w_real[k];
 				y_imag[k] = x_imag[k] * w_imag[k];
 			}
-			FFT(y_real, y_imag, N);
+			FFT(y_real, y_imag, L);
 
 			/* 上位半分の合計を利用した判定 */
 			//for (j = number_fe1; j < number_fe2 + 1; j++)
@@ -130,7 +119,7 @@ int main(void)
 			if (max > threshold)
 			{
 				count++;
-				printf("frame:%d\n", frame);
+				printf("frame:%d	max = %lf\n", frame,max);
 			}
 
 		//		/* フィルタリング結果の連結 */
@@ -149,7 +138,6 @@ int main(void)
 
 	free(pcm0.s); /* メモリの解放 */
 	free(pcm1.s); /* メモリの解放 */
-	free(b); /* メモリの解放 */
 	free(w); /* メモリの解放 */
 	free(w_real); /* メモリの解放 */
 	free(w_imag); /* メモリの解放 */
