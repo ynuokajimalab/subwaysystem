@@ -13,8 +13,9 @@
 int main(void)
 {
 	MONO_PCM pcm0, pcm1;
-	int i, n, m, k, L, offset, frame, number_of_frame, number_fe1, number_fe2, count;
-	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold;
+	int i, j, n, m, k, L, offset, frame, number_of_frame, number_fe1, number_fe2, count;
+	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum, sum_total, sum_average, alpha;
+	double noise_time1, noise_time2, number_noise1, number_noise2;
 
 	mono_wave_read(&pcm0, "ktsyk_snyk.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
@@ -44,6 +45,79 @@ int main(void)
 	count = 0; /* カウントされた回数 */
 	number_fe1 = (int)floor(L * fe1 / 2);
 	number_fe2 = (int)floor(L * fe2 / 2);
+
+	noise_time1 = 0.0;
+	noise_time2 = 5.0;
+	number_noise1 = noise_time1 * pcm0.fs / (2 * L);
+	number_noise2 = noise_time2 * pcm0.fs / (2 * L);
+	sum = 0.0;
+	sum_total = 0.0;
+	alpha = 800.0;
+
+	for (frame = number_noise1; frame < number_noise2; frame++)
+	{
+		offset = L * frame;
+
+		/* x(n)のFFT */
+		for (n = 0; n < L; n++)
+		{
+			x_real[n] = 0.0;
+			x_imag[n] = 0.0;
+		}
+		for (n = 0; n < L; n++)
+		{
+			x_real[n] = pcm0.s[offset + n];
+		}
+
+		/* w(m)のFFT */
+		for (m = 0; m < L; m++)
+		{
+			w_real[m] = 0.0;
+			w_imag[m] = 0.0;
+		}
+		for (m = 0; m < L; m++)
+		{
+			w_real[m] = w[m];
+		}
+		/*FFT(b_real, b_imag, N);*/
+
+		/* 掛け合わせ */
+		for (k = 0; k < L; k++)
+		{
+			y_real[k] = x_real[k] * w_real[k];
+			y_imag[k] = x_imag[k] * w_imag[k];
+		}
+		FFT(y_real, y_imag, L);
+
+		/* 上位半分の合計を利用した判定 */
+		for (j = number_fe1; j < number_fe2 + 1; j++)
+		{
+			if (y_real[j] > y_real[j + 1])
+			{
+				temp = y_real[j];
+				y_real[j] = y_real[j + 1];
+				y_real[j + 1] = temp;
+			}
+		}
+
+		/* 最大値を利用した判定 */
+		max = y_real[number_fe1];
+		for (i = number_fe1; i < number_fe2 + 1; i++)
+		{
+			if (y_real[i] > max)
+			{
+				max = y_real[i];
+			}
+		}
+		for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
+		{
+			sum += y_real[i];
+		}
+		IFFT(y_real, y_imag, L);
+	}
+	sum_total += sum;
+	sum_average = sum_total / (number_noise2 - number_noise1 + 1);
+	threshold = alpha * sum_average;
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -81,46 +155,45 @@ int main(void)
 			FFT(y_real, y_imag, L);
 
 			/* 上位半分の合計を利用した判定 */
-			//for (j = number_fe1; j < number_fe2 + 1; j++)
-			//{
-			//	if (y_real[j] > y_real[j + 1])
-			//	{
-			//		temp = y_real[j];
-			//		y_real[j] = y_real[j + 1];
-			//		y_real[j + 1] = temp;
-			//	}
-			//}
-
-			//threshold = 2.9; /* しきい値 */
-			//sum = 0; /* 初期化 */
-
-			//for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
-			//{
-			//	sum += y_real[i];
-			//}
-			//if (sum > threshold)
-			//{
-			//	count++;
-			//	printf("frame:%d\n", frame);
-			//}
-
-			/* 最大値を利用した判定 */
-			max = y_real[number_fe1];
-			for (i = number_fe1; i < number_fe2 + 1; i++)
+			for (j = number_fe1; j < number_fe2 + 1; j++)
 			{
-				if (y_real[i] > max)
+				if (y_real[j] > y_real[j + 1])
 				{
-					max = y_real[i];
+					temp = y_real[j];
+					y_real[j] = y_real[j + 1];
+					y_real[j + 1] = temp;
 				}
 			}
 
-			threshold = 16.0; /* しきい値 */
+			sum = 0; /* 初期化 */
 
-			if (max > threshold)
+			for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
+			{
+				sum += y_real[i];
+			}
+			if (sum > threshold)
 			{
 				count++;
-				printf("frame:%d	max = %lf\n", frame,max);
+				printf("frame:%d\n", frame);
 			}
+
+			/* 最大値を利用した判定 */
+			//max = y_real[number_fe1];
+			//for (i = number_fe1; i < number_fe2 + 1; i++)
+			//{
+			//	if (y_real[i] > max)
+			//	{
+			//		max = y_real[i];
+			//	}
+			//}
+
+			//threshold = 16.0; /* しきい値 */
+
+			//if (max > threshold)
+			//{
+			//	count++;
+			//	printf("frame:%d	max = %lf\n", frame,max);
+			//}
 
 		//		/* フィルタリング結果の連結 */
 		//		for (n = 0; n < L * 2; n++)
