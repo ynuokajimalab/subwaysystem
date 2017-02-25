@@ -10,12 +10,16 @@
 #include "fir_filter.h"
 #include "fft.h"
 
+#define N 500
+
 int main(void)
 {
 	MONO_PCM pcm0, pcm1;
 	int i, j, n, m, k, L, offset, frame, number_of_frame, number_fe1, number_fe2, count;
-	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum, sum_total, sum_average, alpha;
+	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum, sum_total, sum_average, sum_all, alpha;
 	double noise_time1, noise_time2, number_noise1, number_noise2;
+	double data[N];
+	double data_all[N];
 
 	mono_wave_read(&pcm0, "ktsyk_snyk.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
@@ -47,14 +51,14 @@ int main(void)
 	number_fe2 = (int)floor(L * fe2 / 2);
 
 	noise_time1 = 0.0;
-	noise_time2 = 5.0;
+	noise_time2 = 7.0;
 	number_noise1 = noise_time1 * pcm0.fs / (2 * L);
 	number_noise2 = noise_time2 * pcm0.fs / (2 * L);
-	sum = 0.0;
+	sum = 0.0; /* 初期化 */
 	sum_total = 0.0;
-	alpha = 800.0;
+	alpha = 1.5;
 
-	for (frame = number_noise1; frame < number_noise2; frame++)
+	for (frame = number_noise1; frame < number_noise2 + 1; frame++)
 	{
 		offset = L * frame;
 
@@ -89,31 +93,35 @@ int main(void)
 		}
 		FFT(y_real, y_imag, L);
 
-		/* 上位半分の合計を利用した判定 */
-		for (j = number_fe1; j < number_fe2 + 1; j++)
+		/* 上1/4の合計を利用した判定 */
+		for (i = number_fe1; i < number_fe2 + 1; i++)
 		{
-			if (y_real[j] > y_real[j + 1])
+			data[i] = y_real[i];
+			for (j = i + 1; j < number_fe2 + 1; j++)
 			{
-				temp = y_real[j];
-				y_real[j] = y_real[j + 1];
-				y_real[j + 1] = temp;
+				if (data[i] < data[j])
+				{
+					temp = data[i];
+					data[i] = data[j];
+					data[j] = temp;
+			    }
 			}
 		}
+		for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
+		{
+			sum += data[i];
+		}
+		IFFT(y_real, y_imag, L);
 
 		/* 最大値を利用した判定 */
-		max = y_real[number_fe1];
+		/*max = y_real[number_fe1];
 		for (i = number_fe1; i < number_fe2 + 1; i++)
 		{
 			if (y_real[i] > max)
 			{
 				max = y_real[i];
 			}
-		}
-		for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
-		{
-			sum += y_real[i];
-		}
-		IFFT(y_real, y_imag, L);
+		}*/
 	}
 	sum_total += sum;
 	sum_average = sum_total / (number_noise2 - number_noise1 + 1);
@@ -155,26 +163,30 @@ int main(void)
 			FFT(y_real, y_imag, L);
 
 			/* 上位半分の合計を利用した判定 */
-			for (j = number_fe1; j < number_fe2 + 1; j++)
+			for (i = number_fe1; i < number_fe2 + 1; i++)
 			{
-				if (y_real[j] > y_real[j + 1])
+				data_all[i] = y_real[i];
+				for (j = i + 1; j < number_fe2 + 1; j++)
 				{
-					temp = y_real[j];
-					y_real[j] = y_real[j + 1];
-					y_real[j + 1] = temp;
+					if (data_all[i] < data_all[j])
+					{
+						temp = data_all[i];
+						data_all[i] = data_all[j];
+						data_all[j] = temp;
+					}
 				}
 			}
 
-			sum = 0; /* 初期化 */
-
+			sum_all = 0; /* 初期化 */
 			for (i = number_fe1; i < (number_fe2 - number_fe1 + 1) / 4 + number_fe1 + 1; i++)
 			{
-				sum += y_real[i];
+				sum_all += data_all[i];
 			}
-			if (sum > threshold)
+
+			if (sum_all > threshold)
 			{
 				count++;
-				printf("frame:%d\n", frame);
+				printf("time:%d\n", offset * 2 /pcm0.fs);
 			}
 
 			/* 最大値を利用した判定 */
