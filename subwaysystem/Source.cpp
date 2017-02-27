@@ -155,7 +155,7 @@ int main(void)
 	max_average = max_total / (number_noise2 - number_noise1 + 1);
 	threshold = alpha * max_top;*/
 
-	for (frame = 0; frame < number_of_frame; frame++)
+	for (frame = 0; frame < number_of_frame/2; frame++)
 	{
 		offset = L * frame;
 
