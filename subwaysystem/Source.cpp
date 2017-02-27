@@ -9,6 +9,7 @@
 #include "sinc.h"
 #include "fir_filter.h"
 #include "fft.h"
+#include "countSound.h"
 
 #define N 500
 
@@ -16,21 +17,22 @@ int main(void)
 {
 	MONO_PCM pcm0, pcm1;
 	int i, j, n, m, k, L, offset, frame, number_of_frame, number_fe1, number_fe2, count;
-	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, threshold, temp, sum, sum_total, sum_average, sum_all, alpha;
+	double fe1, fe2, *w, *x_real, *x_imag, *y_real, *y_imag, *w_real, *w_imag, max, max_total, max_average, threshold, temp, sum, sum_total, sum_average, sum_all, alpha, *A, *A_all, max_top;
 	double noise_time1, noise_time2, number_noise1, number_noise2;
 	double data[N];
 	double data_all[N];
 
-	mono_wave_read(&pcm0, "ktsyk_snyk.wav"); /* WAVEファイルからモノラルの音データを入力する */
+	mono_wave_read(&pcm0, "30_29.wav"); /* WAVEファイルからモノラルの音データを入力する */
 
 	pcm1.fs = pcm0.fs; /* 標本化周波数 */
 	pcm1.bits = pcm0.bits; /* 量子化精度 */
 	pcm1.length = pcm0.length; /* 音データの長さ */
 	pcm1.s = (double*)calloc(pcm1.length, sizeof(double)); /* メモリの確保 */
 
-	fe1 = 1500.0 / pcm0.fs; /* エッジ周波数 */
-	fe2 = 2000.0 / pcm0.fs; /* エッジ周波数 */
-	L = 512; /* フレームの長さ */
+	/* 周波数の範囲を指定 */
+	fe1 = 500.0 / pcm0.fs;
+	fe2 = 900.0 / pcm0.fs;
+	L = 256; /* フレームの長さ */
 
 	w = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
 
@@ -38,6 +40,7 @@ int main(void)
 
 
 	number_of_frame = pcm0.length / L; /* フレームの数 */
+	printf("number_of_frame:%d\n", number_of_frame);
 
 	w_real = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
 	w_imag = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
@@ -45,18 +48,25 @@ int main(void)
 	x_imag = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
 	y_real = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
 	y_imag = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	w_real = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	w_imag = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	A = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
+	A_all = (double*)calloc(L, sizeof(double)); /* メモリの確保 */
 
 	count = 0; /* カウントされた回数 */
-	number_fe1 = (int)floor(L * fe1 / 2);
-	number_fe2 = (int)floor(L * fe2 / 2);
+	number_fe1 = (int)floor(L * fe1);
+	number_fe2 = (int)floor(L * fe2);
 
-	noise_time1 = 0.0;
-	noise_time2 = 7.0;
-	number_noise1 = noise_time1 * pcm0.fs / (2 * L);
-	number_noise2 = noise_time2 * pcm0.fs / (2 * L);
+	printf("number_fe1:%d     number_fe2:%d\n", number_fe1,number_fe2);
+
+	noise_time1 = 3.9;
+	noise_time2 = 4.1;
+	number_noise1 = noise_time1 * pcm0.fs /  L;
+	number_noise2 = noise_time2 * pcm0.fs /  L;
 	sum = 0.0; /* 初期化 */
 	sum_total = 0.0;
-	alpha = 1.5;
+	alpha = 1.1;
+	max_total = 0.0;
 
 	for (frame = number_noise1; frame < number_noise2 + 1; frame++)
 	{
@@ -93,10 +103,15 @@ int main(void)
 		}
 		FFT(y_real, y_imag, L);
 
+		for (k = 0; k < L; k++)
+		{
+			A[k] = sqrt(y_real[k] * y_real[k] + y_imag[k] * y_imag[k]);
+		}
+
 		/* 上1/4の合計を利用した判定 */
 		for (i = number_fe1; i < number_fe2 + 1; i++)
 		{
-			data[i] = y_real[i];
+			data[i] = A[i];
 			for (j = i + 1; j < number_fe2 + 1; j++)
 			{
 				if (data[i] < data[j])
@@ -114,18 +129,31 @@ int main(void)
 		IFFT(y_real, y_imag, L);
 
 		/* 最大値を利用した判定 */
-		/*max = y_real[number_fe1];
+		/*for (i = number_fe1; i < number_fe2 + 1; i++)
+		{
+			data[i] = A[i];
+        }
+		max = y_real[number_fe1];
 		for (i = number_fe1; i < number_fe2 + 1; i++)
 		{
-			if (y_real[i] > max)
+			if (data[i] > max)
 			{
-				max = y_real[i];
+				max = data[i];
 			}
+		}
+		max_top = max;
+		if (max > max_top)
+		{
+			max_top = max;
 		}*/
 	}
 	sum_total += sum;
 	sum_average = sum_total / (number_noise2 - number_noise1 + 1);
 	threshold = alpha * sum_average;
+
+	/*max_total += max;
+	max_average = max_total / (number_noise2 - number_noise1 + 1);
+	threshold = alpha * max_top;*/
 
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
@@ -162,10 +190,15 @@ int main(void)
 			}
 			FFT(y_real, y_imag, L);
 
-			/* 上位半分の合計を利用した判定 */
+			for (k = 0; k < L; k++)
+			{
+				A_all[k] = sqrt(y_real[k] * y_real[k] + y_imag[k] * y_imag[k]);
+			}
+
+			/* 上位1/4の合計を利用した判定 */
 			for (i = number_fe1; i < number_fe2 + 1; i++)
 			{
-				data_all[i] = y_real[i];
+				data_all[i] = A_all[i];
 				for (j = i + 1; j < number_fe2 + 1; j++)
 				{
 					if (data_all[i] < data_all[j])
@@ -186,26 +219,30 @@ int main(void)
 			if (sum_all > threshold)
 			{
 				count++;
-				printf("time:%d\n", offset * 2 /pcm0.fs);
+				//?
+				printf("time:%f\n", (double)offset*2 /pcm0.fs);
 			}
 
 			/* 最大値を利用した判定 */
-			//max = y_real[number_fe1];
-			//for (i = number_fe1; i < number_fe2 + 1; i++)
-			//{
-			//	if (y_real[i] > max)
-			//	{
-			//		max = y_real[i];
-			//	}
-			//}
+			/*for (i = number_fe1; i < number_fe2 + 1; i++)
+			{
+				data_all[i] = A_all[i];
+			}
 
-			//threshold = 16.0; /* しきい値 */
+			max = data_all[number_fe1];
+			for (i = number_fe1; i < number_fe2 + 1; i++)
+			{
+				if (data_all[i] > max)
+				{
+					max = data_all[i];
+				}
+			}
 
-			//if (max > threshold)
-			//{
-			//	count++;
-			//	printf("frame:%d	max = %lf\n", frame,max);
-			//}
+			if (max > threshold)
+			{
+				count++;
+				printf("time:%f\n", (double)offset * 2 / pcm0.fs);
+			}*/
 
 		//		/* フィルタリング結果の連結 */
 		//		for (n = 0; n < L * 2; n++)
@@ -219,7 +256,7 @@ int main(void)
 	}
 	printf("回数は%d回です\n", count);
 
-	//mono_wave_write(&pcm1, "short1_out.WAV"); /* WAVEファイルにモノラルの音データを出力する */
+	mono_wave_write(&pcm1, "test1.WAV"); /* WAVEファイルにモノラルの音データを出力する */
 
 	free(pcm0.s); /* メモリの解放 */
 	free(pcm1.s); /* メモリの解放 */
