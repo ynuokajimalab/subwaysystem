@@ -23,17 +23,18 @@ int main(void)
 {
 	STEREO_PCM org_pcm, out_pcm;
 	FILENAME inputfile,outputfile;
-	int n,k, N, offset, frame, number_of_frame;
+	int n,k,g, N, offset, frame, number_of_frame;
 	int wakeflag, count,
-		lowFrequency,highFrequency,divisionFrequency;
-	double *x_real, *x_imag, *y_real,*y_imag,*wN, *A;
-	double thresholdOfPower,upperThresholdOfFrequency, lowerThresholdOfFrequency
-		, sleeptime, alpha, counttime, s,t;
+		lowFrequency,highFrequency,divisionFrequency,generation;
+	double *x_real, *x_imag, *y_real,*y_imag,*wN, *A,*average;
+	double thresholdOfPower,upperThresholdOfFrequency, lowerThresholdOfFrequency, lowerThresholdRate,upperThresholdRate,
+		sleeptime, alpha, counttime, s,t,
+		frequencyDistance,magnification,effectRate;
 	char *infilename, *outfilename;
 
 
 	//入力ファイルのデータ
-	char orgfile[] = "005_160615_0941V0";
+	char orgfile[] = "short3";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
 	int channel = 2;
@@ -45,9 +46,14 @@ int main(void)
 	highFrequency = 3000;
 	lowFrequency = 500;
 	divisionFrequency = 50;
-	lowerThresholdOfFrequency = 6.0;
-	upperThresholdOfFrequency = 50.0;
+	lowerThresholdOfFrequency = 3.5;	//short1: myu > 3.5付近
+	upperThresholdOfFrequency = 10.0;
+	lowerThresholdRate = 1.3;
+	upperThresholdRate = 3.5;
+	effectRate = 0.02;
 
+	generation = 3;
+	magnification = 0.0;
 
 	sleeptime = 0.5;
 	alpha = 4.4;
@@ -58,6 +64,11 @@ int main(void)
 	//データの初期化
 	wakeflag = 1;	//カウントをチェックするかどうか判定
 	counttime = 0.0;	//前のカウント時刻
+	average  = (double*)calloc(generation, sizeof(double));
+	for (g = 0; g < generation;g++) {
+		average[g] = 100.0;
+	}
+
 
 	//ファイルの初期化処理
 	inputfile.filename = (char*)calloc(20, sizeof(char));
@@ -80,7 +91,12 @@ int main(void)
 	spcmcpy(&out_pcm, &org_pcm);
 	/* フレームの数 */
 	number_of_frame = org_pcm.length*2/N;
-	printf("フレーム数：%df		フレーム長：%f[s]\n", number_of_frame,getSecond(N,org_pcm.fs,2));
+	frequencyDistance = (double)org_pcm.fs/(double)(2*N);
+	printf("フレーム数：%d	フレーム長：%f[s]\n", number_of_frame,getSecond(N,org_pcm.fs,2));
+	printf("周波数分解能：%f[Hz]\n", frequencyDistance);
+	printf("前データ影響係数：%f	低閾値調整率；%f	高閾値調整率：%f\n",effectRate,lowerThresholdRate,upperThresholdRate);
+	//printf("世代：%d	閾値変化率：%lf\n",generation,magnification);
+
 
 	printf("---------周波数判定---------\n");
 	printf("範囲：%d～%d[Hz]、区間%d[Hz]\n",lowFrequency,highFrequency,divisionFrequency);
@@ -130,14 +146,17 @@ int main(void)
 				for (k = 0; k < N; k++) {
 					A[k] = sqrt(y_real[k] * y_real[k] + y_imag[k] * y_imag[k]);
 				}
-				if (judgeFrequencyBySd(A, N, lowFrequency ,highFrequency,divisionFrequency, org_pcm.fs, upperThresholdOfFrequency, lowerThresholdOfFrequency)==1)
+				if (judgeFrequency(A,average,generation,N,lowFrequency ,highFrequency,divisionFrequency, org_pcm.fs, magnification, upperThresholdOfFrequency,lowerThresholdOfFrequency)==1)
 				{
-					printf("time = %f\n", getSecond(offset,org_pcm.fs,channel));
+					printf("time = %f	lowerThreshold = %f, upperThreshold = %f\n", getSecond(offset,org_pcm.fs,channel),lowerThresholdOfFrequency,upperThresholdOfFrequency);
 					count++;
 				}
 			}
 		}
-		//sleeptime = updateSleepTime(wakeflag,sleeptime, counttime,s,t, offset, org_pcm.fs);
+		lowerThresholdOfFrequency = updateValue(lowerThresholdOfFrequency,lowerThresholdRate* average[generation - 1],effectRate);
+		upperThresholdOfFrequency = updateValue(upperThresholdOfFrequency, upperThresholdRate* average[generation - 1], effectRate);
+
+				//sleeptime = updateSleepTime(wakeflag,sleeptime, counttime,s,t, offset, org_pcm.fs);
 
 		/* フレームの連結 */
 		for (n = 0; n < N / 2; n++)
