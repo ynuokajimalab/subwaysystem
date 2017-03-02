@@ -159,6 +159,7 @@
     <ClInclude Include="make_datfile.h" />
     <ClInclude Include="sinc.h" />
     <ClInclude Include="spectrum.h" />
+    <ClInclude Include="statistics.h" />
     <ClInclude Include="wave.h" />
     <ClInclude Include="window_function.h" />
   </ItemGroup>
