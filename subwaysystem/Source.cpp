@@ -23,21 +23,32 @@ int main(void)
 {
 	STEREO_PCM org_pcm, out_pcm;
 	FILENAME inputfile,outputfile;
-	int n, N, L, offset, frame, number_of_frame;
-	int cflag, count;
-	double *x_real, *x_imag, *y_real,*y_imag;
-	double threshold, sleeptime, alpha, counttime, s,t;
+	int n,k, N, offset, frame, number_of_frame;
+	int wakeflag, count,
+		lowFrequency,highFrequency,divisionFrequency;
+	double *x_real, *x_imag, *y_real,*y_imag,*wN, *A;
+	double thresholdOfPower,upperThresholdOfFrequency, lowerThresholdOfFrequency
+		, sleeptime, alpha, counttime, s,t;
 	char *infilename, *outfilename;
 
 
 	//入力ファイルのデータ
-	char orgfile[] = "short2";
+	char orgfile[] = "005_160615_0941V0";
 	char filetype[] = ".wav";
 	char directory[] = "./wavfiles/";
+	int channel = 2;
 	//フレームの長さ
-	N = 1024;
-	L = 512;  //実際のデータサイズ
-	threshold = 0;
+	N = 2048;
+	//音圧レベル判定
+	thresholdOfPower = 0;
+	//周波数判定
+	highFrequency = 3000;
+	lowFrequency = 500;
+	divisionFrequency = 50;
+	lowerThresholdOfFrequency = 6.0;
+	upperThresholdOfFrequency = 50.0;
+
+
 	sleeptime = 0.5;
 	alpha = 4.4;
 	s = 0.06;
@@ -45,7 +56,7 @@ int main(void)
 
 
 	//データの初期化
-	cflag = 0;	//カウントをチェックするかどうか判定
+	wakeflag = 1;	//カウントをチェックするかどうか判定
 	counttime = 0.0;	//前のカウント時刻
 
 	//ファイルの初期化処理
@@ -67,28 +78,35 @@ int main(void)
 	printf("総データ数：%d[個]\n", (org_pcm.length) * 2);
 
 	spcmcpy(&out_pcm, &org_pcm);
-
 	/* フレームの数 */
-	number_of_frame = (org_pcm.length * 2 - L / 2) / (L / 2);
-	printf("フレーム数：%d\n", number_of_frame);
+	number_of_frame = org_pcm.length*2/N;
+	printf("フレーム数：%df		フレーム長：%f[s]\n", number_of_frame,getSecond(N,org_pcm.fs,2));
+
+	printf("---------周波数判定---------\n");
+	printf("範囲：%d～%d[Hz]、区間%d[Hz]\n",lowFrequency,highFrequency,divisionFrequency);
+	printf("閾値：sd[%f～%f]で判定\n",lowerThresholdOfFrequency,upperThresholdOfFrequency);
+
+	printf("---------音圧レベル判定---------\n");
+	printf("閾値：%fで判定\n", thresholdOfPower);
+
+	//サイズNの窓関数作成
+	wN = (double*)calloc(N, sizeof(double));
+	Hanning_window(wN, N);
 
 	count = 0;
-	printf("閾値：%lf\nカウント休止時間：%lf[s]\n", threshold, sleeptime);
-
 
 	/* メモリの確保 */
 	x_real = (double*)calloc(N, sizeof(double));
 	x_imag = (double*)calloc(N, sizeof(double));
-
 	y_real = (double*)calloc(N, sizeof(double));
 	y_imag = (double*)calloc(N, sizeof(double));
-
+	A = (double*)calloc(N, sizeof(double));
 
 	printf("\n----解析開始----\n");
 	//フレーム単位の周波数領域での処理
 	for (frame = 0; frame < number_of_frame; frame++)
 	{
-		offset = (L / 2) * frame;
+		offset = N * frame;
 
 		/*データを0で初期化・入力*/
 		for (n = 0; n < N; n++){
@@ -97,21 +115,29 @@ int main(void)
 			y_real[n] = 0.0;
 			y_imag[n] = 0.0;
 		}
-		for (n = 0; n < L / 2; n++){
+		for (n = 0; n < N / 2; n++){
 			x_real[2 * n] = org_pcm.sL[(offset / 2) + n];
 			x_real[(2 * n) + 1] = org_pcm.sR[(offset / 2) + n];
 		}
+		for(n = 0; n < N; n++) {
+			y_real[n] = wN[n] * x_real[n];
+		}
 
-		if (cflag == 0) {
-			if (judgeSoundPower(x_real,N,threshold) == 1) {
-				if (true) {
-				count++;
-				//updateSleepTime(sleeptime, counttime, offset, org_pcm.fs);
+		if ((wakeflag = judgewake()) == 1) {
+			if(true)//if (judgeSoundPower(x_real,N,thresholdOfPower) == 1) 
+			{
+				FFT(y_real, y_imag, N);
+				for (k = 0; k < N; k++) {
+					A[k] = sqrt(y_real[k] * y_real[k] + y_imag[k] * y_imag[k]);
+				}
+				if (judgeFrequencyBySd(A, N, lowFrequency ,highFrequency,divisionFrequency, org_pcm.fs, upperThresholdOfFrequency, lowerThresholdOfFrequency)==1)
+				{
+					printf("time = %f\n", getSecond(offset,org_pcm.fs,channel));
+					count++;
 				}
 			}
-		}else{
-			cflag--;
 		}
+		//sleeptime = updateSleepTime(wakeflag,sleeptime, counttime,s,t, offset, org_pcm.fs);
 
 		/* フレームの連結 */
 		for (n = 0; n < N / 2; n++)

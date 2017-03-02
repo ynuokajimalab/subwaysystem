@@ -7,8 +7,8 @@ int getframe(double second, int framedata, int SamplesPerSec) {
 	return frame;
 }
 
-double getSecond(int offset, int SamplesPerSec) {
-	return ((double)offset/(double)SamplesPerSec);
+double getSecond(int dataNumber, int SamplesPerSec,int channel) {
+	return ((double)dataNumber/(double)(SamplesPerSec*channel));
 }
 
 int getstereoindex(double time, int SamplesPerSec) {

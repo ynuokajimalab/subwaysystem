@@ -10,6 +10,11 @@ int countsound(double sound[], int soundlength, int framelength, double threshol
 	return 0;
 }
 
+int judgewake() {
+	int judge = 1;
+	return 1;
+}
+
 //１フレーム分の音データ、フレーム長、音圧の閾値を設定
 //与えられたフレーム内の最大音が閾値を超えるか判定
 int judgeSoundPower(double *x,int fftpt,double thresholdOfPower) {
@@ -61,13 +66,11 @@ int judgeFrequencyBySd(double *A, int fftpt, double fe1, double fe2, int divisio
 	fe2_position -= positionDistance % sectionLength;
 	max = (double*)calloc(divisionNumber, sizeof(double));
 
-	printf("divisionNumber = %d, sectionLength = %d",divisionNumber,sectionLength);
-
 	for (section = 0; section < divisionNumber;section++) {
 		frequencyOffset = section * sectionLength;
 		max[section] = 0.0;
 		for (position = 0; position < sectionLength; position++) {
-				data = A[frequencyOffset + position];
+				data = A[fe1_position + frequencyOffset + position];
 				if (max[section] < data) {
 					max[section] = data;
 				}
@@ -77,22 +80,35 @@ int judgeFrequencyBySd(double *A, int fftpt, double fe1, double fe2, int divisio
 	myu = getmyu(max, divisionNumber);
 	sd = getSD(max,myu,divisionNumber);
 
-	if (sd < upperThreshold && sd > lowerThreshold) {
+	//if (sd < upperThreshold && sd > lowerThreshold) {
+	//	printf("sd = %lf	", sd);
+	//	judge = 1;
+	//}
+	if (myu < upperThreshold && myu > lowerThreshold) {
+		printf("myu = %lf	", myu);
 		judge = 1;
 	}
+
 
 	return judge;
 }
 
-double updateSleepTime(double sleeptime,double s,double t,double before_counttime, int offset,int fs) {
-	double temptime;
-
-	temptime = getSecond(offset,fs);
-	if (sleeptime > (temptime - before_counttime)*t) {
-		sleeptime -= (temptime - before_counttime) * s;
+//未完成
+double updateSleepTime(int wakeFlag ,double sleeptime,double s,double t,double before_counttime, int offset,int fs,int channel) {
+	double temptime,newsleeptime;
+	if (wakeFlag == 1 ) {
+		temptime = getSecond(offset, fs,channel);
+		if (sleeptime > (temptime - before_counttime)*t) {
+			newsleeptime = sleeptime -(temptime - before_counttime) * s;
+		}
+		else if (sleeptime < (temptime - before_counttime)*t) {
+			newsleeptime = sleeptime + (temptime - before_counttime) * s;
+		}
+		
 	}
-	else if (sleeptime < (temptime - before_counttime)*t) {
-		sleeptime += (temptime - before_counttime) * s;
+	else {
+		newsleeptime = sleeptime;
 	}
-	return sleeptime;
+	return newsleeptime;
+	
 }
