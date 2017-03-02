@@ -146,9 +146,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="sanction.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="headerfiles\countSound.h" />
     <ClInclude Include="headerfiles\dfr_filter.h" />
     <ClInclude Include="headerfiles\fft.h" />
@@ -163,6 +160,9 @@
     <ClInclude Include="headerfiles\statistics.h" />
     <ClInclude Include="headerfiles\wave.h" />
     <ClInclude Include="headerfiles\window_function.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

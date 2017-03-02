@@ -21,15 +21,12 @@
 
 int main(void)
 {
-	STEREO_PCM org_pcm, noise_pcm, out_pcm;
+	STEREO_PCM org_pcm, out_pcm;
 	FILENAME inputfile,outputfile;
-	size_t outfsize;
 	int n, N, L, offset, frame, number_of_frame;
-	int noise_index1, noise_index2, noise_size;
-	int maxindex, minindex, representive_index,secondindex, bflag, cflag, count, sleepframe;
+	int cflag, count;
 	double *x_real, *x_imag, *y_real,*y_imag;
-	double noise_time1, noise_time2, noiseSD_t,alpha, *n_real, *n_imag;
-	double threshold, sleeptime, max, min, data, dy,judgedy, counttime, s,t,temptime,representive_value;
+	double threshold, sleeptime, alpha, counttime, s,t;
 	char *infilename, *outfilename;
 
 
@@ -40,18 +37,14 @@ int main(void)
 	//フレームの長さ
 	N = 1024;
 	L = 512;  //実際のデータサイズ
-	//ノイズのデータ
-	noise_time1 = 0.0;
-	noise_time2 = 12.72;
+	threshold = 0;
 	sleeptime = 0.5;
-	judgedy = 0.0;
 	alpha = 4.4;
 	s = 0.06;
 	t = 2.0/3.0;
 
 
 	//データの初期化
-	bflag = 0;	//前フレームで閾値を超えたか判定
 	cflag = 0;	//カウントをチェックするかどうか判定
 	counttime = 0.0;	//前のカウント時刻
 
@@ -73,43 +66,14 @@ int main(void)
 	printf("ファイル名：%s\n", infilename);
 	printf("総データ数：%d[個]\n", (org_pcm.length) * 2);
 
-
-	//ノイズ設定
-	noise_index1 = getstereoindex(noise_time1, org_pcm.fs);
-	noise_index2 = getstereoindex(noise_time2, org_pcm.fs);
-	noise_size = noise_index2 - noise_index1;
-	printf("\n----ノイズに関するデータ----\n");
-	printf("ノイズ開始時刻：%lf, ノイズ終了時刻：%lf\n", noise_time1, noise_time2);
-	printf("ノイズ開始データ = pcm[%d], ノイズ終了データ = pcm[%d]\n", noise_index1, noise_index2);
-	setspcm(&noise_pcm, &org_pcm, noise_size / 2);
-	getpcm(&org_pcm, &noise_pcm, noise_index1, noise_index2);
-
-	n_real = (double*)calloc(noise_size, sizeof(double));
-	n_imag = (double*)calloc(noise_size, sizeof(double));
-
-	//推定ノイズの初期化
-	for (n = 0; n < noise_size; n++)
-	{
-		n_real[n] = 0.0;
-		n_imag[n] = 0.0;
-	}
-	setnoise(n_real, n_imag, noise_pcm);
-	noiseSD_t = getSD(n_real, 0.0, noise_size);
-	threshold = noiseSD_t * alpha;
-	printf("平均：%lf\n", 0.0);
-	printf("標準偏差：%lf\n", noiseSD_t);
-	printf("閾値：%lf\n", threshold);
-
 	spcmcpy(&out_pcm, &org_pcm);
 
 	/* フレームの数 */
 	number_of_frame = (org_pcm.length * 2 - L / 2) / (L / 2);
 	printf("フレーム数：%d\n", number_of_frame);
 
-	printf("\n----カウントに関するデータ----\n");
-	sleepframe = getframe(sleeptime, L, org_pcm.fs);
 	count = 0;
-	printf("閾値：%lf\nカウント休止時間：%lf[s]\nカウント休止フレーム数：%d\n", threshold, sleeptime, sleepframe);
+	printf("閾値：%lf\nカウント休止時間：%lf[s]\n", threshold, sleeptime);
 
 
 	/* メモリの確保 */
@@ -137,73 +101,13 @@ int main(void)
 			x_real[2 * n] = org_pcm.sL[(offset / 2) + n];
 			x_real[(2 * n) + 1] = org_pcm.sR[(offset / 2) + n];
 		}
-		
-		//データのセーブ
-		for (n = 0; n < N; n++){
-			y_real[n] = x_real[n];
-			y_imag[n] = x_imag[n];
-		}
 
-	
-		//音のカウント
-		/*if (bflag == 1) {
-			secondindex = getMaxindex(y_real, N);
-			dy = representive_value - y_real[secondindex];
-			if (dy > judgedy) {
-				count++;
-				temptime = getsecond(frame, L, org_pcm.fs);
-				if (sleeptime > (temptime - counttime)) {
-					sleeptime -= (temptime - counttime) * s;
-				}
-				else if (sleeptime < (temptime - counttime)) {
-					sleeptime += (temptime - counttime) * s;
-				}
-				counttime = temptime;
-				sleepframe = getframe(sleeptime, L, org_pcm.fs);
-				printf("frame = %d, time = %lf, count = %d\n",frame-1, counttime, count);
-				printf("カウント休止時間：%lf[s]\nカウント休止フレーム数：%d\n", sleeptime, sleepframe);
-				cflag = sleepframe;
-
-			}
-			bflag = 0;
-		}*/
 		if (cflag == 0) {
-			max = -1.0;
-			min = 1.0;
-			for (int i = 0; i < N; i++) {
-				data = y_real[i];
-				if (max < data) {
-					max = data;
-					maxindex = i;
-				}
-				if (min > data) {
-					min = data;
-					minindex = i;
-				}
-			}
-			if (max > -min) {
-				representive_value = max;
-				representive_index = maxindex;
-			}else {
-				representive_value = min;
-				representive_index = minindex;
-			}
-			if (representive_value > threshold) {
-				//printf("over:%lf[s]\n",getsecond(frame,L,org_pcm.fs));
+			if (judgeSoundPower(x_real,N,threshold) == 1) {
+				if (true) {
 				count++;
-				temptime = getsecond(frame, L, org_pcm.fs);
-				if (sleeptime > (temptime - counttime)*t) {
-					sleeptime -= (temptime - counttime) * s;
+				//updateSleepTime(sleeptime, counttime, offset, org_pcm.fs);
 				}
-				else if (sleeptime < (temptime - counttime)*t) {
-					sleeptime += (temptime - counttime) * s;
-				}
-				counttime = temptime;
-				sleepframe = getframe(sleeptime, L, org_pcm.fs);
-				printf("frame = %d, time = %lf, count = %d\n", frame - 1, counttime, count);
-				printf("カウント休止時間：%lf[s]\nカウント休止フレーム数：%d\n", sleeptime, sleepframe);
-				cflag = sleepframe;
-				//bflag = 1;
 			}
 		}else{
 			cflag--;
@@ -220,7 +124,6 @@ int main(void)
 		}
 	}
 	printf("総カウント数： %d\n",count);
-	printf("解析時間： %lf\n", getsecond(number_of_frame, L, org_pcm.fs));
 	printf("----解析終了----\n");
 
 
@@ -233,8 +136,6 @@ int main(void)
 	/* メモリの解放 */
 	free(x_imag);
 	free(x_real);
-	free(n_imag);
-	free(n_real);
 	free(outfilename);
 	free(out_pcm.sL);
 	free(out_pcm.sR);
